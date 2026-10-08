@@ -157,3 +157,4 @@ function BankCache:InitTooltipHook()
         GameTooltip:HookScript("OnTooltipSetItem", AddBankInfoToTooltip)
     end
 end
+

@@ -792,3 +792,4 @@ end
 function BankFrame:IsShown()
     return bankFrame and bankFrame:IsShown()
 end
+

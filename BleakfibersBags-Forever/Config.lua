@@ -1,7 +1,7 @@
 local addonName, BFB = ...
 
 BFB.addonName = addonName
-BFB.version = "1.0.0"
+BFB.version = "1.3.0"
 
 local DB_DEFAULTS = {
     profile = {
@@ -116,6 +116,63 @@ function BFB:OnProfileChanged()
     if self.BagFrame and self.BagFrame.ApplySettings then
         self.BagFrame:ApplySettings()
     end
+    if self.BankFrame and self.BankFrame.UpdateLayout then
+        self.BankFrame:UpdateLayout()
+    end
+    if self.UI and self.UI.Refresh then
+        self.UI:Refresh()
+    end
+end
+
+-- Profile Management Helpers (Non-Destructive)
+function BFB:GetActiveProfile()
+    return (self.dbObject and self.dbObject.GetCurrentProfile and self.dbObject:GetCurrentProfile()) or "Default"
+end
+
+function BFB:GetProfileList()
+    if self.dbObject and self.dbObject.GetProfiles then
+        return self.dbObject:GetProfiles()
+    end
+    return { "Default" }
+end
+
+function BFB:SetProfile(profileKey)
+    if not profileKey or profileKey == "" then return end
+    if self.dbObject and self.dbObject.SetProfile then
+        self.dbObject:SetProfile(profileKey)
+    end
+end
+
+function BFB:CreateProfile(profileKey)
+    if not profileKey or profileKey == "" then return end
+    if self.dbObject and self.dbObject.SetProfile then
+        local current = self:GetActiveProfile()
+        self.dbObject:SetProfile(profileKey)
+        -- NON-DESTRUCTIVE: Clone current active settings into the new profile!
+        if current and current ~= profileKey and self.dbObject.CopyProfile then
+            self.dbObject:CopyProfile(current)
+        end
+    end
+end
+
+function BFB:CopyProfile(fromKey)
+    if not fromKey or fromKey == "" then return end
+    if self.dbObject and self.dbObject.CopyProfile then
+        self.dbObject:CopyProfile(fromKey)
+    end
+end
+
+function BFB:ResetProfile()
+    if self.dbObject and self.dbObject.ResetProfile then
+        self.dbObject:ResetProfile()
+    end
+end
+
+function BFB:DeleteProfile(profileKey)
+    if not profileKey or profileKey == "Default" then return end
+    if self.dbObject and self.dbObject.DeleteProfile then
+        self.dbObject:DeleteProfile(profileKey)
+    end
 end
 
 -- Mover Unlock/Lock State
@@ -182,41 +239,43 @@ function BFB:RegisterWithMasterConfig()
         isBleakfiber = true,
         db = self.db,
         getDB = function() return BFB.db end,
+        buildUI = function(container, isMasterHub)
+            if BFB.UI and BFB.UI.BuildOptions then
+                BFB.UI:BuildOptions(container, isMasterHub)
+            end
+        end,
+        refresh = function()
+            if BFB.UI and BFB.UI.Refresh then
+                BFB.UI:Refresh()
+            end
+            if BFB.BagFrame and BFB.BagFrame.UpdateLayout then
+                BFB.BagFrame:UpdateLayout()
+            end
+            if BFB.BankFrame and BFB.BankFrame.UpdateLayout then
+                BFB.BankFrame:UpdateLayout()
+            end
+        end,
         profiles = {
             GetCurrent = function()
-                return (BFB.dbObject and BFB.dbObject.GetCurrentProfile and BFB.dbObject:GetCurrentProfile()) or "Default"
+                return BFB:GetActiveProfile()
             end,
             SetCurrent = function(profileKey)
-                if not profileKey or profileKey == "" then return end
-                if BFB.dbObject and BFB.dbObject.SetProfile then
-                    local current = BFB.dbObject:GetCurrentProfile()
-                    if current == profileKey then return end
-
-                    local exists = false
-                    if BFB.dbObject.GetProfiles then
-                        local list = BFB.dbObject:GetProfiles()
-                        if type(list) == "table" then
-                            for _, p in ipairs(list) do
-                                if p == profileKey then exists = true; break end
-                            end
-                        end
-                    end
-
-                    if exists then
-                        BFB.dbObject:SetProfile(profileKey)
-                    else
-                        BFB.dbObject:SetProfile(profileKey)
-                        if current and current ~= profileKey and BFB.dbObject.CopyProfile then
-                            BFB.dbObject:CopyProfile(current)
-                        end
-                    end
-                end
+                BFB:SetProfile(profileKey)
             end,
             GetList = function()
-                if BFB.dbObject and BFB.dbObject.GetProfiles then
-                    return BFB.dbObject:GetProfiles()
-                end
-                return { "Default" }
+                return BFB:GetProfileList()
+            end,
+            Create = function(profileKey)
+                BFB:CreateProfile(profileKey)
+            end,
+            Delete = function(profileKey)
+                BFB:DeleteProfile(profileKey)
+            end,
+            Copy = function(fromKey, toKey)
+                BFB:CopyProfile(fromKey)
+            end,
+            Reset = function(profileKey)
+                BFB:ResetProfile()
             end,
         },
         toggleMovers = function(enable)
@@ -234,8 +293,10 @@ end
 function BFB:OpenSettings()
     if BleakfibersAddonConfigForever and BleakfibersAddonConfigForever.OpenToModule then
         BleakfibersAddonConfigForever:OpenToModule("BleakfibersBags")
+    elseif self.UI and self.UI.ToggleStandaloneWindow then
+        self.UI:ToggleStandaloneWindow()
     else
-        print("|cff00c0ffBleakfiber's Bags:|r Install |cffffd100BleakfibersAddonConfig-Forever|r for graphical settings.")
+        print("|cff00c0ffBleakfiber's Bags:|r Settings UI is loading...")
     end
 end
 

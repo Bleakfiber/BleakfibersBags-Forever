@@ -1,7 +1,7 @@
 # Bleakfiber's Bags - Forever
 
 [![Interface](https://img.shields.io/badge/Interface-16001%20(WoW%20Forever)-0078D7.svg?style=flat-square)](https://github.com/Bleakfiber/BleakfibersBags-Forever)
-[![Release](https://img.shields.io/badge/Release-v1.2.0-ffd100.svg?style=flat-square)](https://github.com/Bleakfiber/BleakfibersBags-Forever/releases)
+[![Release](https://img.shields.io/badge/Release-v1.3.0-ffd100.svg?style=flat-square)](https://github.com/Bleakfiber/BleakfibersBags-Forever/releases)
 [![License](https://img.shields.io/badge/License-Source--Available-crimson.svg?style=flat-square)](LICENSE.md)
 [![Dependencies](https://img.shields.io/badge/Dependencies-Zero%20External-2ea44f.svg?style=flat-square)](https://github.com/Bleakfiber/BleakfibersBags-Forever)
 [![Suite](https://img.shields.io/badge/Suite-Bleakfiber's%20Addon%20Suite-8a2be2.svg?style=flat-square)](https://github.com/Bleakfiber)
@@ -30,6 +30,7 @@ Runs **100% standalone out of the box** with zero required external dependencies
   - [10. Equipped Bags Drawer](#10-equipped-bags-drawer)
   - [11. Free Space & Currency Tracking](#11-free-space--currency-tracking)
   - [12. Mover Coordination & Suite Integration](#12-mover-coordination--suite-integration)
+  - [13. Native Configuration GUI & Profiles](#13-native-configuration-gui--profiles)
 - [Slash Commands](#-slash-commands)
 - [Installation Guide](#-installation-guide)
 - [License & Support](#-license--support)
@@ -111,6 +112,17 @@ Click the bag icon in the header to expand an upper drawer revealing all equippe
 
 ### 12. Mover Coordination & Suite Integration
 Reposition both Bags and Bank containers anywhere on your display with `/bfb mover`. When installed alongside `BleakfibersAddonConfig-Forever`, Bleakfiber's Bags responds to master mover unlocking (`/bac mover`) and non-destructive profile capture.
+
+### 13. Native Configuration GUI & Profiles
+A comprehensive, native Dark Slate & Gold graphical configuration panel accessible via `/bfb config` or `/bags config`:
+- **Categorized Tabs**:
+  - **General & Layout**: Adjust bag columns (6 to 20), button sizes (24 to 52px), slot padding, display modes (Classic Grid vs Categorized), and automated NPC interaction events.
+  - **Display & Overlays**: Toggle item quality rarity borders, vendor junk coin markers, quest item golden glows, equipment item levels, bag bar drawers, and live search bars.
+  - **Bank & Vault**: Customize bank columns (8 to 24), bank display modes, bank drawer visibility, offline snapshot caching, cross-character tooltip tracking, and cache flushing.
+  - **Automation & Sorting**: Auto-sell grey junk, auto-repair equipment at vendors (with Shift-key bypass), and one-click bag/bank sorting and reagent depositing.
+  - **Profiles & Positioning**: AceDB-3.0 non-destructive profile creation, profile switching, settings copying, reset to defaults, and independent mover controls.
+- **Dual-Mode Rendering**: Embeds natively inside `BleakfibersAddonConfig-Forever` when installed, or displays as an independent draggable standalone window with ESC close handling.
+- **Dynamic Reflow & Smart Scrollbars**: Features 2-column wide layout (`w >= 470px`) vs 1-column compact reflow (`w < 470px`) with automatic scrollbar management (`SetupAutoScroll`).
 
 ---
 

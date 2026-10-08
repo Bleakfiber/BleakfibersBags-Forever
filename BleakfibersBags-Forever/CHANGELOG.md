@@ -2,6 +2,24 @@
 
 All notable changes to **Bleakfiber's Bags - Forever** are documented below.
 
+## [1.3.0] - 2026-10-08: Phase 4 Native Configuration GUI & Profile Engine
+
+### Added
+- **Native Dark Slate & Gold Configuration Panel (`UI.lua`)**:
+  - Full-featured, modular options interface styled with signature Dark Slate & Gold theme aesthetics.
+  - Tabbed organization:
+    - **General & Layout**: Configurable bag columns (6 to 20), button size (24 to 52px), slot spacing, view mode toggle (Classic Grid vs Categorized), and granular NPC auto-open/close event triggers.
+    - **Display & Overlays**: Toggles for item quality border glow, vendor junk coin indicators, quest item golden borders, equipment item level overlays, bag slots drawer, and live search bar.
+    - **Bank & Vault**: Bank columns slider (8 to 24), bank display mode, bank bag slots drawer, offline snapshot caching toggle, cross-character tooltip tracking, and clear cache utility.
+    - **Automation & Sorting**: Auto-sell grey junk, auto-repair equipment at vendors, Shift-key bypass guidelines, and direct actions for bag sorting, bank sorting, and trade goods deposit.
+    - **Profiles & Positioning**: AceDB-3.0 non-destructive profile creation, profile switching, settings copying, reset to defaults, and independent mover controls.
+- **Dual-Mode Rendering (`isMasterHub`)**:
+  - Seamlessly integrates into `BleakfibersAddonConfig-Forever` when installed, inheriting Master Hub styling, global movers, and synchronized profile switching.
+  - Standalone fallback window with drag handle and ESC close support when opened via `/bfb config` without BAC installed.
+- **Dynamic Responsive Reflow & Smart Scrollbars**:
+  - Automatically shifts between a balanced 2-column layout (`width >= 470px`) and single-column vertical stack (`width < 470px`) to prevent text overlap and clipping.
+  - Smart auto-hiding scrollbar (`SetupAutoScroll`) disables wheel scrolling and hides scrollbars when content fits within the viewport.
+
 ## [1.2.0] - 2026-10-08: Phase 3 Bank, Vault & Reagent Integration
 
 ### Added
