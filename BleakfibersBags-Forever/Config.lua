@@ -9,12 +9,18 @@ local DB_DEFAULTS = {
         columns = 10,
         buttonSize = 37,
         buttonSpacing = 4,
+        viewMode = "grid", -- "grid" or "category"
+        collapsedCategories = {},
         
         -- Visual Indicators
         showJunkIcon = true,
         showQualityGlow = true,
         showQuestGlow = true,
         showItemLevel = false,
+        
+        -- Automation & Merchant
+        autoSellJunk = true,
+        autoRepair = true,
         
         -- Header & Bag Bar
         showBagSlotBar = false,
@@ -222,13 +228,21 @@ SlashCmdList["BLEAKFIBERSBAGS"] = function(msg)
         BFB:ToggleMovers()
     elseif cmd == "reset" then
         BFB:ResetPosition()
+    elseif cmd == "sort" or cmd == "compress" then
+        if BFB.Sorting then BFB.Sorting:StartSort() end
+    elseif cmd == "view" or cmd == "mode" then
+        local db = BFB.db or {}
+        db.viewMode = (db.viewMode == "category") and "grid" or "category"
+        if BFB.BagFrame and BFB.BagFrame.UpdateLayout then BFB.BagFrame:UpdateLayout() end
+        print(string.format("|cff00c0ffBleakfiber's Bags:|r View mode set to |cffffd100%s|r.", db.viewMode))
     elseif cmd == "config" or cmd == "settings" or cmd == "options" then
         BFB:OpenSettings()
     else
         if BFB.BagFrame and BFB.BagFrame.Toggle then
             BFB.BagFrame:Toggle()
         else
-            print("|cff00c0ffBleakfiber's Bags:|r Use |cffffd100/bfb mover|r to unlock/lock, |cffffd100/bfb reset|r to restore default position.")
+            print("|cff00c0ffBleakfiber's Bags:|r Use |cffffd100/bfb mover|r to unlock/lock, |cffffd100/bfb sort|r to sort, |cffffd100/bfb view|r to toggle mode.")
         end
     end
 end
+

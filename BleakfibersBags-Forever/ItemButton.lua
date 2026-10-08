@@ -261,3 +261,4 @@ function ItemButtons:UpdateButton(button, bagID, slotID, searchTerm)
         button:SetAlpha(1.0)
     end
 end
+

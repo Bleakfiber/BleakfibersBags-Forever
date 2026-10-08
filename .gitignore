@@ -1,11 +1,15 @@
-# Changelog
-changelog.md
-changelog/
-changelogs/
-*changelog*
+# Operating System
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors & IDEs
+.vscode/
+.idea/
+*.swp
+*.bak
 
 # Zip archives & folders
 *.zip
 zip/
 zips/
-

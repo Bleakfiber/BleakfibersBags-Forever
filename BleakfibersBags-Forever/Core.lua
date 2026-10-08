@@ -71,6 +71,61 @@ function BFB:OnMerchantShow()
     if self.db and self.db.autoOpenOnMerchant ~= false then
         if self.BagFrame then self.BagFrame:Show() end
     end
+
+    -- Shift-key bypass check
+    if IsShiftKeyDown and IsShiftKeyDown() then
+        return
+    end
+
+    -- Auto-Sell Vendor Junk
+    if self.db and self.db.autoSellJunk then
+        local soldCount = 0
+        local totalGain = 0
+
+        for bag = 0, 4 do
+            local numSlots = BFB.GetNumSlots(bag)
+            for slot = 1, numSlots do
+                local info = BFB.GetItemInfo(bag, slot)
+                if info and info.quality == 0 and info.hyperlink and not info.isLocked then
+                    local _, _, _, _, _, _, _, _, _, _, sellPrice = GetItemInfo(info.hyperlink)
+                    if sellPrice and sellPrice > 0 then
+                        local stackGain = sellPrice * (info.stackCount or 1)
+                        if C_Container and C_Container.UseContainerItem then
+                            C_Container.UseContainerItem(bag, slot)
+                        elseif UseContainerItem then
+                            UseContainerItem(bag, slot)
+                        end
+                        soldCount = soldCount + 1
+                        totalGain = totalGain + stackGain
+                    end
+                end
+            end
+        end
+
+        if soldCount > 0 and totalGain > 0 then
+            local gold = math.floor(totalGain / 10000)
+            local silver = math.floor((totalGain % 10000) / 100)
+            local copper = totalGain % 100
+            print(string.format("|cff00c0ffBleakfiber's Bags:|r Sold %d junk item(s) for |cffffd100%dg|r |cffe6e6e6%ds|r |cffc87d32%dc|r.", soldCount, gold, silver, copper))
+        end
+    end
+
+    -- Auto-Repair Equipment
+    if self.db and self.db.autoRepair and CanMerchantRepair and CanMerchantRepair() then
+        local repairCost, canRepair = GetRepairAllCost()
+        if canRepair and repairCost > 0 then
+            local playerMoney = GetMoney()
+            if playerMoney >= repairCost then
+                RepairAllItems()
+                local gold = math.floor(repairCost / 10000)
+                local silver = math.floor((repairCost % 10000) / 100)
+                local copper = repairCost % 100
+                print(string.format("|cff00c0ffBleakfiber's Bags:|r Repaired all items for |cffffd100%dg|r |cffe6e6e6%ds|r |cffc87d32%dc|r.", gold, silver, copper))
+            else
+                print("|cff00c0ffBleakfiber's Bags:|r Insufficient funds for auto-repair.")
+            end
+        end
+    end
 end
 
 function BFB:OnMerchantClosed()
@@ -175,3 +230,4 @@ function BFB:HookBlizzardBagFrames()
         end
     end
 end
+

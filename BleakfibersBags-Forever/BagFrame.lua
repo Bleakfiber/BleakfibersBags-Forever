@@ -7,6 +7,8 @@ local mainFrame = nil
 local moverOverlay = nil
 local activeGridButtons = {}
 local bagSlotButtons = {}
+local categoryHeaders = {}
+local categoryHeaderPool = {}
 
 local BACKDROP_PANEL = {
     bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -16,6 +18,68 @@ local BACKDROP_PANEL = {
     edgeSize = 1,
     insets = { left = 1, right = 1, top = 1, bottom = 1 },
 }
+
+-- Acquire Category Header
+local function AcquireCategoryHeader(parent, categoryID, titleText, count, color, isCollapsed, onToggle)
+    local header = table.remove(categoryHeaderPool)
+    if not header then
+        header = CreateFrame("Button", nil, parent, "BackdropTemplate")
+        if not header.SetBackdrop and BackdropTemplateMixin then
+            Mixin(header, BackdropTemplateMixin)
+        end
+        header:SetHeight(20)
+        header:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8",
+            edgeSize = 1,
+        })
+        header:SetBackdropColor(0.05, 0.06, 0.09, 0.85)
+        header:SetBackdropBorderColor(0.25, 0.30, 0.40, 0.70)
+
+        local arrow = header:CreateFontString(nil, "OVERLAY")
+        arrow:SetFont(BFB:FetchFont(BFB.DEFAULT_HEADER_FONT_NAME), 9, "OUTLINE")
+        arrow:SetPoint("LEFT", header, "LEFT", 4, 0)
+        header.Arrow = arrow
+
+        local title = header:CreateFontString(nil, "OVERLAY")
+        title:SetFont(BFB:FetchFont(BFB.DEFAULT_HEADER_FONT_NAME), 10, "OUTLINE")
+        title:SetPoint("LEFT", arrow, "RIGHT", 4, 0)
+        header.Title = title
+
+        local countFs = header:CreateFontString(nil, "OVERLAY")
+        countFs:SetFont(BFB:FetchFont(BFB.DEFAULT_FONT_NAME), 9, "OUTLINE")
+        countFs:SetPoint("RIGHT", header, "RIGHT", -6, 0)
+        header.Count = countFs
+    end
+
+    header:SetParent(parent)
+    header.categoryID = categoryID
+    header.Arrow:SetText(isCollapsed and "|cffffd100▶|r" or "|cffffd100▼|r")
+    
+    local r = (color and color.r) or 1
+    local g = (color and color.g) or 1
+    local b = (color and color.b) or 1
+    header.Title:SetTextColor(r, g, b, 1.0)
+    header.Title:SetText(titleText or categoryID)
+
+    header.Count:SetText(string.format("|cffaaaaaa(%d)|r", count or 0))
+    header:SetScript("OnClick", function()
+        if onToggle then onToggle(categoryID) end
+    end)
+    header:Show()
+
+    table.insert(categoryHeaders, header)
+    return header
+end
+
+local function ReleaseCategoryHeaders()
+    for _, h in ipairs(categoryHeaders) do
+        h:Hide()
+        h:ClearAllPoints()
+        table.insert(categoryHeaderPool, h)
+    end
+    wipe(categoryHeaders)
+end
 
 -- Initialize Main Bag Container Frame
 function BagFrame:Init()
@@ -80,7 +144,7 @@ function BagFrame:Init()
 
     -- Bag Slot Drawer Toggle Button
     local bagSlotToggle = CreateFrame("Button", nil, header)
-    bagSlotToggle:SetSize(20, 20)
+    bagSlotToggle:SetSize(18, 18)
     bagSlotToggle:SetPoint("RIGHT", closeBtn, "LEFT", -6, 0)
     local bagIcon = bagSlotToggle:CreateTexture(nil, "ARTWORK")
     bagIcon:SetAllPoints()
@@ -93,10 +157,58 @@ function BagFrame:Init()
     end)
     bagSlotToggle:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine("Toggle Equipped Bags Drawer", 1, 0.82, 0)
+        GameTooltip:AddLine("Equipped Bags Drawer", 1, 0.82, 0)
+        GameTooltip:AddLine("Click to show or hide equipped bag containers.", 1, 1, 1, true)
         GameTooltip:Show()
     end)
     bagSlotToggle:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    -- View Mode Toggle Button (Grid vs Categorized)
+    local viewToggle = CreateFrame("Button", nil, header)
+    viewToggle:SetSize(18, 18)
+    viewToggle:SetPoint("RIGHT", bagSlotToggle, "LEFT", -6, 0)
+    local viewIcon = viewToggle:CreateTexture(nil, "ARTWORK")
+    viewIcon:SetAllPoints()
+    viewIcon:SetTexture("Interface\\Buttons\\UI-Guild-Log")
+    viewToggle:SetScript("OnClick", function()
+        local db = BFB.db or {}
+        if db.viewMode == "category" then
+            db.viewMode = "grid"
+        else
+            db.viewMode = "category"
+        end
+        BagFrame:UpdateLayout()
+    end)
+    viewToggle:SetScript("OnEnter", function(self)
+        local db = BFB.db or {}
+        local currentMode = (db.viewMode == "category") and "Categorized" or "All-in-One Grid"
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine("Toggle View Mode", 1, 0.82, 0)
+        GameTooltip:AddDoubleLine("Current Mode:", currentMode, 1, 1, 1, 0.2, 0.8, 1)
+        GameTooltip:AddLine("Switch between All-in-One Grid and Intelligent Categorized sections.", 0.8, 0.8, 0.8, true)
+        GameTooltip:Show()
+    end)
+    viewToggle:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    -- Sort & Consolidate Button
+    local sortBtn = CreateFrame("Button", nil, header)
+    sortBtn:SetSize(18, 18)
+    sortBtn:SetPoint("RIGHT", viewToggle, "LEFT", -6, 0)
+    local sortIcon = sortBtn:CreateTexture(nil, "ARTWORK")
+    sortIcon:SetAllPoints()
+    sortIcon:SetTexture("Interface\\Buttons\\UI-GroupLoot-Dice-Up")
+    sortBtn:SetScript("OnClick", function()
+        if BFB.Sorting then
+            BFB.Sorting:StartSort()
+        end
+    end)
+    sortBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine("Sort & Consolidate Bags", 1, 0.82, 0)
+        GameTooltip:AddLine("Consolidates partial stacks and sorts items by category, quality, and level.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    sortBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     -- Live Search EditBox
     local searchBox = CreateFrame("EditBox", "BleakfibersBagsSearchBox", header, "BackdropTemplate")
@@ -104,8 +216,8 @@ function BagFrame:Init()
         Mixin(searchBox, BackdropTemplateMixin)
     end
     searchBox:SetHeight(18)
-    searchBox:SetWidth(110)
-    searchBox:SetPoint("RIGHT", bagSlotToggle, "LEFT", -8, 0)
+    searchBox:SetWidth(95)
+    searchBox:SetPoint("RIGHT", sortBtn, "LEFT", -8, 0)
     searchBox:SetAutoFocus(false)
     searchBox:SetFont(BFB:FetchFont(BFB.DEFAULT_FONT_NAME), 10, "")
     searchBox:SetTextColor(0.9, 0.9, 0.9, 1.0)
@@ -412,15 +524,18 @@ function BagFrame:UpdateBagSlotBar()
     end
 end
 
--- Update Main Inventory Grid Layout & Slot Buttons
+-- Update Main Inventory Layout (All-in-One Grid or Categorized)
 function BagFrame:UpdateLayout()
     if not mainFrame then return end
     local db = BFB.db or {}
     local cols = db.columns or 10
     local btnSize = db.buttonSize or 37
     local spacing = db.buttonSpacing or 4
+    local isCategoryView = (db.viewMode == "category")
+    db.collapsedCategories = db.collapsedCategories or {}
 
     BFB.ItemButtons:ReleaseAll()
+    ReleaseCategoryHeaders()
     wipe(activeGridButtons)
 
     local totalSlots = 0
@@ -442,38 +557,96 @@ function BagFrame:UpdateLayout()
         end
     end
 
-    local numItems = #slotList
-    local rows = math.ceil(numItems / cols)
-    if rows < 1 then rows = 1 end
-
-    -- Reposition & Acquire Buttons in Grid
     local searchTerm = mainFrame.SearchBox and mainFrame.SearchBox:GetText()
+    local totalContentH = 0
 
-    for idx, slotData in ipairs(slotList) do
-        local btn = BFB.ItemButtons:Acquire(mainFrame.GridContainer)
-        btn:SetSize(btnSize, btnSize)
+    if not isCategoryView then
+        -- 1. All-in-One Grid Mode
+        local numItems = #slotList
+        local rows = math.ceil(numItems / cols)
+        if rows < 1 then rows = 1 end
 
-        local row = math.floor((idx - 1) / cols)
-        local col = (idx - 1) % cols
+        for idx, slotData in ipairs(slotList) do
+            local btn = BFB.ItemButtons:Acquire(mainFrame.GridContainer)
+            btn:SetSize(btnSize, btnSize)
 
-        local x = col * (btnSize + spacing)
-        local y = -row * (btnSize + spacing)
+            local row = math.floor((idx - 1) / cols)
+            local col = (idx - 1) % cols
 
-        btn:SetPoint("TOPLEFT", mainFrame.GridContainer, "TOPLEFT", x, y)
-        BFB.ItemButtons:UpdateButton(btn, slotData.bag, slotData.slot, searchTerm)
-        table.insert(activeGridButtons, btn)
+            local x = col * (btnSize + spacing)
+            local y = -row * (btnSize + spacing)
+
+            btn:SetPoint("TOPLEFT", mainFrame.GridContainer, "TOPLEFT", x, y)
+            BFB.ItemButtons:UpdateButton(btn, slotData.bag, slotData.slot, searchTerm)
+            table.insert(activeGridButtons, btn)
+        end
+
+        totalContentH = rows * btnSize + (rows - 1) * spacing
+    else
+        -- 2. Intelligent Categorized Sections Mode
+        local categories = BFB.CategoryEngine and BFB.CategoryEngine:GroupSlots(slotList) or {}
+        local currentY = 0
+
+        for _, catGroup in ipairs(categories) do
+            local catID = catGroup.id
+            local isCollapsed = db.collapsedCategories[catID]
+            local numItemsInCat = #catGroup.slots
+
+            local header = AcquireCategoryHeader(
+                mainFrame.GridContainer,
+                catID,
+                catGroup.name,
+                numItemsInCat,
+                catGroup.color,
+                isCollapsed,
+                function(toggledCatID)
+                    db.collapsedCategories[toggledCatID] = not db.collapsedCategories[toggledCatID]
+                    BagFrame:UpdateLayout()
+                end
+            )
+
+            local gridW = cols * btnSize + (cols - 1) * spacing
+            header:SetWidth(gridW)
+            header:SetPoint("TOPLEFT", mainFrame.GridContainer, "TOPLEFT", 0, currentY)
+            currentY = currentY - 24
+
+            if not isCollapsed then
+                local catRows = math.ceil(numItemsInCat / cols)
+                if catRows < 1 then catRows = 1 end
+
+                for idx, slotData in ipairs(catGroup.slots) do
+                    local btn = BFB.ItemButtons:Acquire(mainFrame.GridContainer)
+                    btn:SetSize(btnSize, btnSize)
+
+                    local row = math.floor((idx - 1) / cols)
+                    local col = (idx - 1) % cols
+
+                    local x = col * (btnSize + spacing)
+                    local y = currentY - (row * (btnSize + spacing))
+
+                    btn:SetPoint("TOPLEFT", mainFrame.GridContainer, "TOPLEFT", x, y)
+                    BFB.ItemButtons:UpdateButton(btn, slotData.bag, slotData.slot, searchTerm)
+                    table.insert(activeGridButtons, btn)
+                end
+
+                local catBlockH = catRows * btnSize + (catRows - 1) * spacing
+                currentY = currentY - catBlockH - 10
+            else
+                currentY = currentY - 4
+            end
+        end
+
+        totalContentH = math.abs(currentY)
     end
 
     -- Dynamic Window Sizing
     local gridW = cols * btnSize + (cols - 1) * spacing
-    local gridH = rows * btnSize + (rows - 1) * spacing
-
     local totalW = gridW + 20
     local headerH = 34 + (db.showBagSlotBar and 36 or 0)
     local footerH = 30
-    local totalH = gridH + headerH + footerH
+    local totalH = totalContentH + headerH + footerH
 
-    mainFrame:SetSize(math.max(totalW, 240), totalH)
+    mainFrame:SetSize(math.max(totalW, 260), math.max(totalH, 120))
 
     -- Update Free Slots Counter
     if mainFrame.FreeSlotsText then

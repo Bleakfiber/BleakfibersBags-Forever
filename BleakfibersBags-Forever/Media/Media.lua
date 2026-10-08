@@ -52,3 +52,4 @@ function BFB:FetchFont(fontName)
 
     return fallback
 end
+
