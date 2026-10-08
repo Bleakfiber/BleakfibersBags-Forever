@@ -1,0 +1,548 @@
+local addonName, BFB = ...
+
+BFB.BagFrame = {}
+local BagFrame = BFB.BagFrame
+
+local mainFrame = nil
+local moverOverlay = nil
+local activeGridButtons = {}
+local bagSlotButtons = {}
+
+local BACKDROP_PANEL = {
+    bgFile = "Interface\\Buttons\\WHITE8x8",
+    edgeFile = "Interface\\Buttons\\WHITE8x8",
+    tile = false,
+    tileSize = 0,
+    edgeSize = 1,
+    insets = { left = 1, right = 1, top = 1, bottom = 1 },
+}
+
+-- Initialize Main Bag Container Frame
+function BagFrame:Init()
+    if mainFrame then return mainFrame end
+
+    mainFrame = CreateFrame("Frame", "BleakfibersBags_MainFrame", UIParent, "BackdropTemplate")
+    if not mainFrame.SetBackdrop and BackdropTemplateMixin then
+        Mixin(mainFrame, BackdropTemplateMixin)
+    end
+
+    mainFrame:SetFrameStrata("HIGH")
+    mainFrame:SetToplevel(true)
+    mainFrame:SetClampedToScreen(true)
+    mainFrame:EnableMouse(true)
+    mainFrame:SetMovable(true)
+    mainFrame:RegisterForDrag("LeftButton")
+
+    -- Backdrop & Theme
+    mainFrame:SetBackdrop(BACKDROP_PANEL)
+    mainFrame:SetBackdropColor(0.08, 0.09, 0.12, 0.94)
+    mainFrame:SetBackdropBorderColor(0.85, 0.65, 0.15, 1.0)
+
+    -- Dragging & Position Management
+    mainFrame:SetScript("OnDragStart", function(self)
+        if self:IsMovable() then
+            self:StartMoving()
+        end
+    end)
+    mainFrame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        BagFrame:SavePosition()
+    end)
+
+    -- Header Bar
+    local header = CreateFrame("Frame", nil, mainFrame)
+    header:SetHeight(30)
+    header:SetPoint("TOPLEFT", 8, -6)
+    header:SetPoint("TOPRIGHT", -8, -6)
+    mainFrame.Header = header
+
+    -- Title FontString
+    local title = header:CreateFontString(nil, "OVERLAY")
+    title:SetFont(BFB:FetchFont(BFB.DEFAULT_HEADER_FONT_NAME), 12, "OUTLINE")
+    title:SetTextColor(1.0, 0.82, 0.0, 1.0)
+    title:SetText("Bleakfiber's Bags")
+    title:SetPoint("LEFT", header, "LEFT", 4, 0)
+    mainFrame.Title = title
+
+    -- Close Button
+    local closeBtn = CreateFrame("Button", nil, header)
+    closeBtn:SetSize(18, 18)
+    closeBtn:SetPoint("RIGHT", header, "RIGHT", -2, 0)
+    local closeText = closeBtn:CreateFontString(nil, "OVERLAY")
+    closeText:SetFont(BFB:FetchFont(BFB.DEFAULT_HEADER_FONT_NAME), 13, "OUTLINE")
+    closeText:SetText("|cffff4444✕|r")
+    closeText:SetPoint("CENTER")
+    closeBtn:SetScript("OnClick", function()
+        BagFrame:Hide()
+    end)
+    closeBtn:SetScript("OnEnter", function() closeText:SetText("|cffffffff✕|r") end)
+    closeBtn:SetScript("OnLeave", function() closeText:SetText("|cffff4444✕|r") end)
+
+    -- Bag Slot Drawer Toggle Button
+    local bagSlotToggle = CreateFrame("Button", nil, header)
+    bagSlotToggle:SetSize(20, 20)
+    bagSlotToggle:SetPoint("RIGHT", closeBtn, "LEFT", -6, 0)
+    local bagIcon = bagSlotToggle:CreateTexture(nil, "ARTWORK")
+    bagIcon:SetAllPoints()
+    bagIcon:SetTexture("Interface\\Buttons\\Button-Backpack-Up")
+    bagSlotToggle:SetScript("OnClick", function()
+        local db = BFB.db or {}
+        db.showBagSlotBar = not db.showBagSlotBar
+        BagFrame:UpdateBagSlotBar()
+        BagFrame:UpdateLayout()
+    end)
+    bagSlotToggle:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine("Toggle Equipped Bags Drawer", 1, 0.82, 0)
+        GameTooltip:Show()
+    end)
+    bagSlotToggle:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    -- Live Search EditBox
+    local searchBox = CreateFrame("EditBox", "BleakfibersBagsSearchBox", header, "BackdropTemplate")
+    if not searchBox.SetBackdrop and BackdropTemplateMixin then
+        Mixin(searchBox, BackdropTemplateMixin)
+    end
+    searchBox:SetHeight(18)
+    searchBox:SetWidth(110)
+    searchBox:SetPoint("RIGHT", bagSlotToggle, "LEFT", -8, 0)
+    searchBox:SetAutoFocus(false)
+    searchBox:SetFont(BFB:FetchFont(BFB.DEFAULT_FONT_NAME), 10, "")
+    searchBox:SetTextColor(0.9, 0.9, 0.9, 1.0)
+    searchBox:SetTextInsets(6, 16, 0, 0)
+
+    searchBox:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    searchBox:SetBackdropColor(0.04, 0.04, 0.06, 0.85)
+    searchBox:SetBackdropBorderColor(0.3, 0.3, 0.35, 0.9)
+
+    -- Search Placeholder
+    local searchPlaceholder = searchBox:CreateFontString(nil, "OVERLAY")
+    searchPlaceholder:SetFont(BFB:FetchFont(BFB.DEFAULT_FONT_NAME), 9, "")
+    searchPlaceholder:SetTextColor(0.5, 0.5, 0.5, 0.8)
+    searchPlaceholder:SetText("Search...")
+    searchPlaceholder:SetPoint("LEFT", 6, 0)
+
+    -- Search Clear (X) Button
+    local clearSearchBtn = CreateFrame("Button", nil, searchBox)
+    clearSearchBtn:SetSize(14, 14)
+    clearSearchBtn:SetPoint("RIGHT", searchBox, "RIGHT", -2, 0)
+    local clearText = clearSearchBtn:CreateFontString(nil, "OVERLAY")
+    clearText:SetFont(BFB:FetchFont(BFB.DEFAULT_FONT_NAME), 9, "OUTLINE")
+    clearText:SetText("|cff888888✕|r")
+    clearText:SetPoint("CENTER")
+    clearSearchBtn:Hide()
+    clearSearchBtn:SetScript("OnClick", function()
+        searchBox:SetText("")
+        searchBox:ClearFocus()
+    end)
+
+    searchBox:SetScript("OnTextChanged", function(self)
+        local text = self:GetText()
+        if text and text ~= "" then
+            searchPlaceholder:Hide()
+            clearSearchBtn:Show()
+        else
+            searchPlaceholder:Show()
+            clearSearchBtn:Hide()
+        end
+        BagFrame:UpdateSearchFilter(text)
+    end)
+    searchBox:SetScript("OnEscapePressed", function(self)
+        self:SetText("")
+        self:ClearFocus()
+    end)
+    searchBox:SetScript("OnEnterPressed", function(self)
+        self:ClearFocus()
+    end)
+    mainFrame.SearchBox = searchBox
+
+    -- Bag Slots Drawer (Equipped Bags 0..4)
+    local bagSlotBar = CreateFrame("Frame", nil, mainFrame, "BackdropTemplate")
+    if not bagSlotBar.SetBackdrop and BackdropTemplateMixin then
+        Mixin(bagSlotBar, BackdropTemplateMixin)
+    end
+    bagSlotBar:SetHeight(32)
+    bagSlotBar:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -2)
+    bagSlotBar:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", 0, -2)
+    bagSlotBar:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    bagSlotBar:SetBackdropColor(0.04, 0.05, 0.07, 0.90)
+    bagSlotBar:SetBackdropBorderColor(0.2, 0.25, 0.35, 0.6)
+    bagSlotBar:Hide()
+    mainFrame.BagSlotBar = bagSlotBar
+
+    -- Create 5 Bag Slot Buttons (Backpack + 4 Bags)
+    local bagIDs = { 0, 1, 2, 3, 4 }
+    for i, bagID in ipairs(bagIDs) do
+        local bSlot = CreateFrame("Button", "BleakfibersBagSlot" .. bagID, bagSlotBar, "BackdropTemplate")
+        if not bSlot.SetBackdrop and BackdropTemplateMixin then
+            Mixin(bSlot, BackdropTemplateMixin)
+        end
+        bSlot:SetSize(26, 26)
+        bSlot:SetPoint("LEFT", bagSlotBar, "LEFT", 6 + (i - 1) * 32, 0)
+        bSlot:SetBackdrop(BACKDROP_PANEL)
+        bSlot:SetBackdropColor(0.08, 0.09, 0.12, 1.0)
+        bSlot:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.8)
+
+        local icon = bSlot:CreateTexture(nil, "ARTWORK")
+        icon:SetAllPoints()
+        bSlot.Icon = icon
+
+        local count = bSlot:CreateFontString(nil, "OVERLAY")
+        count:SetFont(BFB:FetchFont(BFB.DEFAULT_FONT_NAME), 8, "OUTLINE")
+        count:SetPoint("BOTTOMRIGHT", bSlot, "BOTTOMRIGHT", -1, 1)
+        count:SetTextColor(1, 1, 1, 1)
+        bSlot.Count = count
+
+        bSlot:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            if bagID == 0 then
+                GameTooltip:AddLine("Backpack (16 Slots)", 1, 0.82, 0)
+            else
+                local invID = ContainerIDToInventoryID and ContainerIDToInventoryID(bagID)
+                if invID and GameTooltip.SetInventoryItem then
+                    GameTooltip:SetInventoryItem("player", invID)
+                else
+                    GameTooltip:AddLine("Bag " .. bagID, 1, 0.82, 0)
+                end
+            end
+            GameTooltip:Show()
+        end)
+        bSlot:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        bSlot:SetScript("OnClick", function(self)
+            if bagID > 0 then
+                local invID = ContainerIDToInventoryID and ContainerIDToInventoryID(bagID)
+                if invID and PickupInventoryItem then
+                    PickupInventoryItem(invID)
+                end
+            end
+        end)
+
+        bagSlotButtons[bagID] = bSlot
+    end
+
+    -- Item Grid Container
+    local gridContainer = CreateFrame("Frame", nil, mainFrame)
+    gridContainer:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 10, -38)
+    mainFrame.GridContainer = gridContainer
+
+    -- Footer Bar
+    local footer = CreateFrame("Frame", nil, mainFrame)
+    footer:SetHeight(26)
+    footer:SetPoint("BOTTOMLEFT", 8, 4)
+    footer:SetPoint("BOTTOMRIGHT", -8, 4)
+    mainFrame.Footer = footer
+
+    -- Free Slots Display FontString
+    local freeSlotsText = footer:CreateFontString(nil, "OVERLAY")
+    freeSlotsText:SetFont(BFB:FetchFont(BFB.DEFAULT_FONT_NAME), 10, "OUTLINE")
+    freeSlotsText:SetTextColor(0.85, 0.85, 0.85, 1.0)
+    freeSlotsText:SetPoint("LEFT", footer, "LEFT", 4, 0)
+    mainFrame.FreeSlotsText = freeSlotsText
+
+    -- Interactive Tooltip on Free Slots Text
+    local freeSlotsHit = CreateFrame("Button", nil, footer)
+    freeSlotsHit:SetAllPoints(freeSlotsText)
+    freeSlotsHit:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT")
+        GameTooltip:AddLine("Bag Capacity Breakdown", 1, 0.82, 0)
+        local totalFree, totalSlots = 0, 0
+        for bag = 0, 4 do
+            local numSlots = BFB.GetNumSlots(bag)
+            if numSlots and numSlots > 0 then
+                local free = 0
+                for slot = 1, numSlots do
+                    local info = BFB.GetItemInfo(bag, slot)
+                    if not info or not info.iconFileID then
+                        free = free + 1
+                    end
+                end
+                totalFree = totalFree + free
+                totalSlots = totalSlots + numSlots
+                local bagName = (bag == 0) and "Backpack" or ("Bag " .. bag)
+                GameTooltip:AddDoubleLine(bagName, string.format("%d / %d free", free, numSlots), 1, 1, 1, 0.2, 1, 0.2)
+            end
+        end
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddDoubleLine("Total Capacity", string.format("%d / %d free", totalFree, totalSlots), 1, 0.82, 0, 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    freeSlotsHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    -- Money Counter FontString
+    local moneyText = footer:CreateFontString(nil, "OVERLAY")
+    moneyText:SetFont(BFB:FetchFont(BFB.DEFAULT_FONT_NAME), 10, "OUTLINE")
+    moneyText:SetPoint("RIGHT", footer, "RIGHT", -4, 0)
+    mainFrame.MoneyText = moneyText
+
+    -- Mover Frame Overlay
+    moverOverlay = CreateFrame("Frame", nil, mainFrame, "BackdropTemplate")
+    if not moverOverlay.SetBackdrop and BackdropTemplateMixin then
+        Mixin(moverOverlay, BackdropTemplateMixin)
+    end
+    moverOverlay:SetAllPoints()
+    moverOverlay:SetFrameStrata("TOOLTIP")
+    moverOverlay:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 2,
+    })
+    moverOverlay:SetBackdropColor(0.1, 0.1, 0.15, 0.85)
+    moverOverlay:SetBackdropBorderColor(0.2, 0.8, 1.0, 1.0)
+    moverOverlay:EnableMouse(true)
+    moverOverlay:RegisterForDrag("LeftButton")
+    moverOverlay:Hide()
+
+    local moverLabel = moverOverlay:CreateFontString(nil, "OVERLAY")
+    moverLabel:SetFont(BFB:FetchFont(BFB.DEFAULT_HEADER_FONT_NAME), 12, "OUTLINE")
+    moverLabel:SetTextColor(0.2, 0.8, 1.0, 1.0)
+    moverLabel:SetText("Bleakfiber's Bags Mover\n|cffffffffDrag to reposition|r\n|cffaaaaaaRight-Click to Lock|r")
+    moverLabel:SetPoint("CENTER")
+
+    moverOverlay:SetScript("OnDragStart", function()
+        if mainFrame:IsMovable() then
+            mainFrame:StartMoving()
+        end
+    end)
+    moverOverlay:SetScript("OnDragStop", function()
+        mainFrame:StopMovingOrSizing()
+        BagFrame:SavePosition()
+    end)
+    moverOverlay:SetScript("OnMouseUp", function(self, button)
+        if button == "RightButton" then
+            BFB:ToggleMovers(false)
+        end
+    end)
+
+    -- Apply Saved Coordinates
+    self:LoadPosition()
+
+    -- Initial Update
+    self:UpdateLayout()
+    self:UpdateMoney()
+
+    mainFrame:Hide()
+    return mainFrame
+end
+
+-- Save Frame Position
+function BagFrame:SavePosition()
+    if not mainFrame then return end
+    local db = BFB.db or {}
+    db.bagPosition = db.bagPosition or {}
+
+    local point, _, relPoint, x, y = mainFrame:GetPoint()
+    db.bagPosition.point = point or "BOTTOMRIGHT"
+    db.bagPosition.relativePoint = relPoint or "BOTTOMRIGHT"
+    db.bagPosition.x = x or -45
+    db.bagPosition.y = y or 180
+end
+
+-- Load Frame Position
+function BagFrame:LoadPosition()
+    if not mainFrame then return end
+    local db = BFB.db or {}
+    local pos = db.bagPosition or {}
+    local point = pos.point or "BOTTOMRIGHT"
+    local relPoint = pos.relativePoint or "BOTTOMRIGHT"
+    local x = pos.x or -45
+    local y = pos.y or 180
+
+    mainFrame:ClearAllPoints()
+    mainFrame:SetPoint(point, UIParent, relPoint, x, y)
+end
+
+-- Set Mover State
+function BagFrame:SetMoverActive(active)
+    if not mainFrame then return end
+    if active then
+        mainFrame:Show()
+        if moverOverlay then moverOverlay:Show() end
+    else
+        if moverOverlay then moverOverlay:Hide() end
+    end
+end
+
+-- Update Bag Slot Drawer Icons & Status
+function BagFrame:UpdateBagSlotBar()
+    local db = BFB.db or {}
+    if not mainFrame or not mainFrame.BagSlotBar then return end
+
+    if db.showBagSlotBar then
+        mainFrame.BagSlotBar:Show()
+        mainFrame.GridContainer:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 10, -74)
+    else
+        mainFrame.BagSlotBar:Hide()
+        mainFrame.GridContainer:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 10, -38)
+    end
+
+    for bagID, btn in pairs(bagSlotButtons) do
+        if bagID == 0 then
+            btn.Icon:SetTexture("Interface\\Buttons\\Button-Backpack-Up")
+            btn.Count:SetText("16")
+        else
+            local invID = ContainerIDToInventoryID and ContainerIDToInventoryID(bagID)
+            local itemLink = invID and GetInventoryItemLink and GetInventoryItemLink("player", invID)
+            local numSlots = BFB.GetNumSlots(bagID)
+
+            if itemLink then
+                local icon = GetInventoryItemTexture("player", invID)
+                btn.Icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_Bag_08")
+                btn.Count:SetText(numSlots and tostring(numSlots) or "")
+                local _, _, quality = GetItemInfo(itemLink)
+                if quality and quality > 1 then
+                    local r, g, b = GetItemQualityColor(quality)
+                    btn:SetBackdropBorderColor(r, g, b, 1.0)
+                else
+                    btn:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.8)
+                end
+            else
+                btn.Icon:SetTexture("Interface\\PaperDoll\\UI-PaperDoll-Slot-Bag")
+                btn.Count:SetText("")
+                btn:SetBackdropBorderColor(0.25, 0.25, 0.3, 0.6)
+            end
+        end
+    end
+end
+
+-- Update Main Inventory Grid Layout & Slot Buttons
+function BagFrame:UpdateLayout()
+    if not mainFrame then return end
+    local db = BFB.db or {}
+    local cols = db.columns or 10
+    local btnSize = db.buttonSize or 37
+    local spacing = db.buttonSpacing or 4
+
+    BFB.ItemButtons:ReleaseAll()
+    wipe(activeGridButtons)
+
+    local totalSlots = 0
+    local freeSlots = 0
+
+    -- Gather all slots from bags 0 to 4
+    local slotList = {}
+    for bagID = 0, 4 do
+        local numSlots = BFB.GetNumSlots(bagID)
+        if numSlots and numSlots > 0 then
+            totalSlots = totalSlots + numSlots
+            for slotID = 1, numSlots do
+                local info = BFB.GetItemInfo(bagID, slotID)
+                if not info or not info.iconFileID then
+                    freeSlots = freeSlots + 1
+                end
+                table.insert(slotList, { bag = bagID, slot = slotID })
+            end
+        end
+    end
+
+    local numItems = #slotList
+    local rows = math.ceil(numItems / cols)
+    if rows < 1 then rows = 1 end
+
+    -- Reposition & Acquire Buttons in Grid
+    local searchTerm = mainFrame.SearchBox and mainFrame.SearchBox:GetText()
+
+    for idx, slotData in ipairs(slotList) do
+        local btn = BFB.ItemButtons:Acquire(mainFrame.GridContainer)
+        btn:SetSize(btnSize, btnSize)
+
+        local row = math.floor((idx - 1) / cols)
+        local col = (idx - 1) % cols
+
+        local x = col * (btnSize + spacing)
+        local y = -row * (btnSize + spacing)
+
+        btn:SetPoint("TOPLEFT", mainFrame.GridContainer, "TOPLEFT", x, y)
+        BFB.ItemButtons:UpdateButton(btn, slotData.bag, slotData.slot, searchTerm)
+        table.insert(activeGridButtons, btn)
+    end
+
+    -- Dynamic Window Sizing
+    local gridW = cols * btnSize + (cols - 1) * spacing
+    local gridH = rows * btnSize + (rows - 1) * spacing
+
+    local totalW = gridW + 20
+    local headerH = 34 + (db.showBagSlotBar and 36 or 0)
+    local footerH = 30
+    local totalH = gridH + headerH + footerH
+
+    mainFrame:SetSize(math.max(totalW, 240), totalH)
+
+    -- Update Free Slots Counter
+    if mainFrame.FreeSlotsText then
+        local ratio = (totalSlots > 0) and (freeSlots / totalSlots) or 0
+        local colorCode = "|cff00ff00" -- green
+        if ratio <= 0.10 then
+            colorCode = "|cffff2020" -- red
+        elseif ratio <= 0.25 then
+            colorCode = "|cffffaa00" -- orange
+        end
+        mainFrame.FreeSlotsText:SetText(string.format("Free: %s%d|r / |cffffffff%d|r", colorCode, freeSlots, totalSlots))
+    end
+end
+
+-- Live Search Filtering
+function BagFrame:UpdateSearchFilter(term)
+    if not activeGridButtons then return end
+    for _, btn in ipairs(activeGridButtons) do
+        if btn.bagID and btn.slotID then
+            BFB.ItemButtons:UpdateButton(btn, btn.bagID, btn.slotID, term)
+        end
+    end
+end
+
+-- Update Money Counter
+function BagFrame:UpdateMoney()
+    if not mainFrame or not mainFrame.MoneyText then return end
+    local money = GetMoney and GetMoney() or 0
+
+    local gold = math.floor(money / 10000)
+    local silver = math.floor((money % 10000) / 100)
+    local copper = money % 100
+
+    local formatted = string.format("|cffffd100%d|r|TInterface\\MoneyFrame\\UI-GoldIcon:12:12:1:0|t |cffe6e6e6%d|r|TInterface\\MoneyFrame\\UI-SilverIcon:12:12:1:0|t |cffc87d32%d|r|TInterface\\MoneyFrame\\UI-CopperIcon:12:12:1:0|t", gold, silver, copper)
+    mainFrame.MoneyText:SetText(formatted)
+end
+
+-- Refresh and Reapply Profile Settings
+function BagFrame:ApplySettings()
+    self:LoadPosition()
+    self:UpdateBagSlotBar()
+    self:UpdateLayout()
+    self:UpdateMoney()
+end
+
+-- Visibility Controls
+function BagFrame:Show()
+    local frame = self:Init()
+    frame:Show()
+    self:UpdateBagSlotBar()
+    self:UpdateLayout()
+    self:UpdateMoney()
+end
+
+function BagFrame:Hide()
+    if mainFrame then
+        mainFrame:Hide()
+    end
+end
+
+function BagFrame:Toggle()
+    local frame = self:Init()
+    if frame:IsShown() then
+        self:Hide()
+    else
+        self:Show()
+    end
+end
+
+function BagFrame:IsShown()
+    return mainFrame and mainFrame:IsShown()
+end
