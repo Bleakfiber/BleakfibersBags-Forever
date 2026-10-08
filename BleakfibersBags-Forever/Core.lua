@@ -25,6 +25,16 @@ function BFB:OnInitialize()
     if self.BagFrame and self.BagFrame.Init then
         self.BagFrame:Init()
     end
+
+    -- Initialize Bank Window
+    if self.BankFrame and self.BankFrame.Init then
+        self.BankFrame:Init()
+    end
+
+    -- Initialize Bank Cache Tooltip Hook
+    if self.BankCache and self.BankCache.InitTooltipHook then
+        self.BankCache:InitTooltipHook()
+    end
 end
 
 function BFB:OnEnable()
@@ -36,11 +46,15 @@ function BFB:OnEnable()
     self:RegisterEvent("ITEM_LOCK_CHANGED", "OnItemLockChanged")
     self:RegisterEvent("PLAYER_MONEY", "OnPlayerMoney")
 
+    -- Register Bank Events
+    self:RegisterEvent("BANKFRAME_OPENED", "OnBankOpened")
+    self:RegisterEvent("BANKFRAME_CLOSED", "OnBankClosed")
+    self:RegisterEvent("PLAYERBANKSLOTS_CHANGED", "OnBankSlotsChanged")
+    self:RegisterEvent("PLAYERBANKBAGSLOTS_CHANGED", "OnBankBagSlotsChanged")
+
     -- Register Interaction & Merchant Automation Events
     self:RegisterEvent("MERCHANT_SHOW", "OnMerchantShow")
     self:RegisterEvent("MERCHANT_CLOSED", "OnMerchantClosed")
-    self:RegisterEvent("BANKFRAME_OPENED", "OnBankOpened")
-    self:RegisterEvent("BANKFRAME_CLOSED", "OnBankClosed")
     self:RegisterEvent("MAIL_SHOW", "OnMailShow")
     self:RegisterEvent("MAIL_CLOSED", "OnMailClosed")
     self:RegisterEvent("AUCTION_HOUSE_SHOW", "OnAuctionShow")
@@ -135,14 +149,39 @@ function BFB:OnMerchantClosed()
 end
 
 function BFB:OnBankOpened()
+    if self.BankFrame then
+        self.BankFrame:OnBankOpened()
+    end
     if self.db and self.db.autoOpenOnBank ~= false then
         if self.BagFrame then self.BagFrame:Show() end
     end
 end
 
 function BFB:OnBankClosed()
+    if self.BankFrame then
+        self.BankFrame:OnBankClosed()
+    end
     if self.db and self.db.autoCloseOnBank ~= false then
         if self.BagFrame then self.BagFrame:Hide() end
+    end
+end
+
+function BFB:OnBankSlotsChanged()
+    if self.BankFrame and self.BankFrame.IsShown and self.BankFrame:IsShown() then
+        self.BankFrame:UpdateLayout()
+    end
+    if self.BankCache then
+        self.BankCache:ScanBank()
+    end
+end
+
+function BFB:OnBankBagSlotsChanged()
+    if self.BankFrame and self.BankFrame.IsShown and self.BankFrame:IsShown() then
+        self.BankFrame:UpdateBankBagSlotBar()
+        self.BankFrame:UpdateLayout()
+    end
+    if self.BankCache then
+        self.BankCache:ScanBank()
     end
 end
 
@@ -228,6 +267,13 @@ function BFB:HookBlizzardBagFrames()
                 selfFrame:Hide()
             end)
         end
+    end
+
+    -- Suppress default Blizzard BankFrame from popping up
+    if BankFrame then
+        self:HookScript(BankFrame, "OnShow", function(selfFrame)
+            selfFrame:Hide()
+        end)
     end
 end
 

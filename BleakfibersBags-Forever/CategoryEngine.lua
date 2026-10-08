@@ -111,3 +111,4 @@ function CategoryEngine:GroupSlots(slotList)
 
     return result
 end
+

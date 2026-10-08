@@ -2,6 +2,30 @@
 
 All notable changes to **Bleakfiber's Bags - Forever** are documented below.
 
+## [1.2.0] - 2026-10-08: Phase 3 Bank, Vault & Reagent Integration
+
+### Added
+- **Unified Bank & Vault Frame (`BankFrame.lua`)**:
+  - Full Dark Slate & Gold container frame consolidating Main Bank (Bag -1) and all 6 Bank Bags (Bags 5 to 10) into a single unified window.
+  - Seamlessly supports both All-in-One Grid mode and Intelligent Categorized sections.
+  - Expandable Bank Bags Drawer displaying equipped bank bags, slot capacities, and unpurchased bank slots with purchase cost tooltips and one-click purchase support.
+  - Live search filtering input box dimming non-matching bank items on keystroke.
+- **Quick Deposit & Stacking Actions**:
+  - **Deposit All Trade Goods**: One-click transfer transferring all crafting reagents and consumables from inventory into available bank slots.
+  - **Stack to Bank**: Automatically detects matching incomplete item stacks between your bags and the bank, merging them with a single click.
+- **Offline Bank Caching & Alt Tooltips (`BankCache.lua`)**:
+  - Automatically caches bank inventory snapshots into SavedVariables on bank visits.
+  - Allows inspecting bank contents from anywhere in the world (`/bfb bank`) with an amber `[Cached]` header indicator.
+  - Tooltip integration: Hovering over any item in your bags displays total stock in the bank, including breakdowns across alternate characters on the realm.
+- **Side-by-Side Window Orchestration**:
+  - Visiting a banker automatically opens player bags and the bank container side-by-side without overlapping.
+  - Closing the bank safely dismisses both frames.
+  - Suppressed default Blizzard `BankFrame` popup.
+- **Independent Mover Coordination**:
+  - Persistent bank coordinates stored in `db.bankPosition`, with mover overlay support via `/bfb mover` and `/bac mover`.
+
+---
+
 ## [1.1.0] - 2026-10-08: Phase 2 Categorization & Intelligent Organization Engine
 
 ### Added

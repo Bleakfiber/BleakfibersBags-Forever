@@ -12,6 +12,14 @@ local DB_DEFAULTS = {
         viewMode = "grid", -- "grid" or "category"
         collapsedCategories = {},
         
+        -- Bank Settings
+        bankColumns = 12,
+        bankViewMode = "grid", -- "grid" or "category"
+        showBankBagSlotBar = false,
+        collapsedBankCategories = {},
+        enableBankCache = true,
+        showBankTooltip = true,
+        
         -- Visual Indicators
         showJunkIcon = true,
         showQualityGlow = true,
@@ -123,9 +131,12 @@ function BFB:ToggleMovers(forceState)
     if self.BagFrame and self.BagFrame.SetMoverActive then
         self.BagFrame:SetMoverActive(isMoverActive)
     end
+    if self.BankFrame and self.BankFrame.SetMoverActive then
+        self.BankFrame:SetMoverActive(isMoverActive)
+    end
 
     local statusMsg = isMoverActive and "|cff00ff00unlocked|r (Drag frame to position, right-click to lock)" or "|cffff6666locked|r."
-    print(string.format("|cff00c0ffBleakfiber's Bags:|r Frame is %s", statusMsg))
+    print(string.format("|cff00c0ffBleakfiber's Bags:|r Frames are %s", statusMsg))
     return isMoverActive
 end
 
@@ -141,10 +152,19 @@ function BFB:ResetPosition()
         self.db.bagPosition.x = -45
         self.db.bagPosition.y = 180
     end
+    if self.db and self.db.bankPosition then
+        self.db.bankPosition.point = "TOPLEFT"
+        self.db.bankPosition.relativePoint = "TOPLEFT"
+        self.db.bankPosition.x = 60
+        self.db.bankPosition.y = -80
+    end
     if self.BagFrame and self.BagFrame.LoadPosition then
         self.BagFrame:LoadPosition()
     end
-    print("|cff00c0ffBleakfiber's Bags:|r Bag frame position has been reset to default.")
+    if self.BankFrame and self.BankFrame.LoadPosition then
+        self.BankFrame:LoadPosition()
+    end
+    print("|cff00c0ffBleakfiber's Bags:|r Bag and Bank positions have been reset to default.")
 end
 
 -- Soft Register with BleakfibersAddonConfigForever
@@ -230,6 +250,8 @@ SlashCmdList["BLEAKFIBERSBAGS"] = function(msg)
         BFB:ResetPosition()
     elseif cmd == "sort" or cmd == "compress" then
         if BFB.Sorting then BFB.Sorting:StartSort() end
+    elseif cmd == "bank" or cmd == "vault" then
+        if BFB.BankFrame then BFB.BankFrame:Toggle() end
     elseif cmd == "view" or cmd == "mode" then
         local db = BFB.db or {}
         db.viewMode = (db.viewMode == "category") and "grid" or "category"
