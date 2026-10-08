@@ -1,7 +1,7 @@
 # Bleakfiber's Bags - Forever
 
 [![Interface](https://img.shields.io/badge/Interface-16001%20(WoW%20Forever)-0078D7.svg?style=flat-square)](https://github.com/Bleakfiber/BleakfibersBags-Forever)
-[![Release](https://img.shields.io/badge/Release-v1.3.0-ffd100.svg?style=flat-square)](https://github.com/Bleakfiber/BleakfibersBags-Forever/releases)
+[![Release](https://img.shields.io/badge/Release-v1.4.0-ffd100.svg?style=flat-square)](https://github.com/Bleakfiber/BleakfibersBags-Forever/releases)
 [![License](https://img.shields.io/badge/License-Source--Available-crimson.svg?style=flat-square)](LICENSE.md)
 [![Dependencies](https://img.shields.io/badge/Dependencies-Zero%20External-2ea44f.svg?style=flat-square)](https://github.com/Bleakfiber/BleakfibersBags-Forever)
 [![Suite](https://img.shields.io/badge/Suite-Bleakfiber's%20Addon%20Suite-8a2be2.svg?style=flat-square)](https://github.com/Bleakfiber)
@@ -31,6 +31,7 @@ Runs **100% standalone out of the box** with zero required external dependencies
   - [11. Free Space & Currency Tracking](#11-free-space--currency-tracking)
   - [12. Mover Coordination & Suite Integration](#12-mover-coordination--suite-integration)
   - [13. Native Configuration GUI & Profiles](#13-native-configuration-gui--profiles)
+  - [14. Advanced Item Intelligence & Custom Tagging](#14-advanced-item-intelligence--custom-tagging)
 - [Slash Commands](#-slash-commands)
 - [Installation Guide](#-installation-guide)
 - [License & Support](#-license--support)
@@ -123,6 +124,13 @@ A comprehensive, native Dark Slate & Gold graphical configuration panel accessib
   - **Profiles & Positioning**: AceDB-3.0 non-destructive profile creation, profile switching, settings copying, reset to defaults, and independent mover controls.
 - **Dual-Mode Rendering**: Embeds natively inside `BleakfibersAddonConfig-Forever` when installed, or displays as an independent draggable standalone window with ESC close handling.
 - **Dynamic Reflow & Smart Scrollbars**: Features 2-column wide layout (`w >= 470px`) vs 1-column compact reflow (`w < 470px`) with automatic scrollbar management (`SetupAutoScroll`).
+
+### 14. Advanced Item Intelligence & Custom Tagging
+- **Recent Items Engine**: Automatically captures looted items from chat log (`CHAT_MSG_LOOT`) and elevates them into a dedicated high-priority "Recent Items" virtual category with a cyan indicator. Configurable duration window (1 to 15 minutes).
+- **Equipment Usability Scanner & Red Tint**: Identifies equipment restricted by character level, class, or armor/weapon proficiencies, applying a subtle red overlay so players instantly know what gear cannot be equipped.
+- **Specialty Container Slot Recognition**: Detects profession and class bags (Soul, Herb, Mining, Enchanting, and Quiver/Ammo containers) and applies color-coded borders to empty specialty slots.
+- **Custom Item Category Overrides**: Alt + Right-Click any item in your bags or bank to open an instant Dark Slate & Gold context menu and reassign it to any desired category, saved permanently in your profile.
+- **Advanced Search Keyword Syntax**: Supports full search syntax including binding keywords (`boe`, `bop`, `soulbound`), category keywords (`quest`, `junk`, `gear`, `consumable`, `reagent`), rarity keywords (`poor`, `common`, `uncommon`, `rare`, `epic`), and numeric level comparison queries (`>30`, `<20`).
 
 ---
 

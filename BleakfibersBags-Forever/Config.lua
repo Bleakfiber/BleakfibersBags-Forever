@@ -1,7 +1,7 @@
 local addonName, BFB = ...
 
 BFB.addonName = addonName
-BFB.version = "1.3.0"
+BFB.version = "1.4.0"
 
 local DB_DEFAULTS = {
     profile = {
@@ -20,11 +20,19 @@ local DB_DEFAULTS = {
         enableBankCache = true,
         showBankTooltip = true,
         
-        -- Visual Indicators
+        -- Visual Indicators & Usability Overlays (Phase 5)
         showJunkIcon = true,
         showQualityGlow = true,
         showQuestGlow = true,
         showItemLevel = false,
+        tintUnusable = true,
+        highlightSpecialtyBags = true,
+        
+        -- Recent Items & Custom Categories (Phase 5)
+        enableRecentItems = true,
+        recentTimeout = 5, -- minutes
+        customCategoryOverrides = {},
+        enableAdvancedSearch = true,
         
         -- Automation & Merchant
         autoSellJunk = true,

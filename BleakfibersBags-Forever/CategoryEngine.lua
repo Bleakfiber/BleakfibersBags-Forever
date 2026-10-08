@@ -3,6 +3,9 @@ local addonName, BFB = ...
 BFB.CategoryEngine = {}
 local CategoryEngine = BFB.CategoryEngine
 
+-- Recent Items tracking cache (in-memory, indexed by itemID -> timestamp)
+BFB.recentItems = BFB.recentItems or {}
+
 -- Standard Category Definitions in display priority order
 CategoryEngine.CATEGORIES = {
     { id = "recent",      name = "Recent Items",        order = 1,  color = { r = 0.20, g = 0.85, b = 1.00 } },
@@ -25,15 +28,82 @@ function CategoryEngine:GetCategoryInfo(categoryID)
     return categoryMap[categoryID] or { id = categoryID, name = categoryID, order = 99, color = { r = 1, g = 1, b = 1 } }
 end
 
--- Determine an item's category based on link, itemID, and quality
+-- Recent Items Management
+function CategoryEngine:MarkRecent(itemID)
+    if not itemID or itemID == 0 then return end
+    BFB.recentItems[itemID] = time()
+end
+
+function CategoryEngine:IsRecent(itemID)
+    if not itemID or itemID == 0 then return false end
+    local db = BFB.db or {}
+    if db.enableRecentItems == false then return false end
+    
+    local lootTime = BFB.recentItems[itemID]
+    if not lootTime then return false end
+    
+    local timeout = (db.recentTimeout or 5) * 60
+    if (time() - lootTime) <= timeout then
+        return true
+    else
+        BFB.recentItems[itemID] = nil
+        return false
+    end
+end
+
+function CategoryEngine:ClearRecent()
+    BFB.recentItems = {}
+end
+
+-- Custom Category Overrides
+function CategoryEngine:SetItemCategory(itemID, categoryID)
+    if not itemID or itemID == 0 then return end
+    local db = BFB.db
+    if not db then return end
+    db.customCategoryOverrides = db.customCategoryOverrides or {}
+    if categoryID and categoryMap[categoryID] then
+        db.customCategoryOverrides[itemID] = categoryID
+    else
+        db.customCategoryOverrides[itemID] = nil
+    end
+    if BFB.BagFrame and BFB.BagFrame.UpdateLayout then BFB.BagFrame:UpdateLayout() end
+    if BFB.BankFrame and BFB.BankFrame.UpdateLayout then BFB.BankFrame:UpdateLayout() end
+end
+
+function CategoryEngine:GetItemCategoryOverride(itemID)
+    if not itemID or itemID == 0 then return nil end
+    local db = BFB.db or {}
+    local overrides = db.customCategoryOverrides
+    return overrides and overrides[itemID]
+end
+
+-- Determine an item's category based on link, itemID, quality and user overrides
 function CategoryEngine:ClassifyItem(bagID, slotID, itemInfo)
     if not itemInfo or not itemInfo.iconFileID then
         return "empty"
     end
 
+    local itemID = itemInfo.itemID
+    if not itemID and itemInfo.hyperlink then
+        local match = itemInfo.hyperlink:match("item:(%d+)")
+        if match then itemID = tonumber(match) end
+    end
+
+    -- 1. Custom User Overrides take highest precedence
+    local customCat = self:GetItemCategoryOverride(itemID)
+    if customCat and categoryMap[customCat] then
+        return customCat
+    end
+
+    -- 2. Junk items (Quality 0)
     local quality = itemInfo.quality or 1
     if quality == 0 then
         return "junk"
+    end
+
+    -- 3. Recent Items (if enabled and within duration window)
+    if itemID and self:IsRecent(itemID) then
+        return "recent"
     end
 
     local link = itemInfo.hyperlink
@@ -43,32 +113,32 @@ function CategoryEngine:ClassifyItem(bagID, slotID, itemInfo)
 
     local itemName, _, itemQuality, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice, classID, subclassID = GetItemInfo(link)
     
-    -- 1. Quest Items
+    -- 4. Quest Items
     if classID == 12 or itemType == "Quest" or itemInfo.isQuestItem then
         return "quest"
     end
 
-    -- 2. Equipment / Gear (Armor & Weapons)
+    -- 5. Equipment / Gear (Armor & Weapons)
     if classID == 2 or classID == 4 or itemType == "Armor" or itemType == "Weapon" or (itemEquipLoc and itemEquipLoc ~= "" and itemEquipLoc ~= "INVTYPE_NON_EQUIP") then
         return "gear"
     end
 
-    -- 3. Consumables (Food, Drink, Potions, Bandages, Scrolls)
+    -- 6. Consumables (Food, Drink, Potions, Bandages, Scrolls)
     if classID == 0 or itemType == "Consumable" then
         return "consumables"
     end
 
-    -- 4. Trade Goods & Crafting Reagents
+    -- 7. Trade Goods & Crafting Reagents
     if classID == 7 or itemType == "Trade Goods" or itemType == "Reagent" then
         return "tradegoods"
     end
 
-    -- 5. Recipes & Schematics
+    -- 8. Recipes & Schematics
     if classID == 9 or itemType == "Recipe" then
         return "recipes"
     end
 
-    -- 6. Fallback / Miscellaneous
+    -- 9. Fallback / Miscellaneous
     return "misc"
 end
 
@@ -111,4 +181,3 @@ function CategoryEngine:GroupSlots(slotList)
 
     return result
 end
-

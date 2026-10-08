@@ -61,12 +61,22 @@ function BFB:OnEnable()
     self:RegisterEvent("AUCTION_HOUSE_CLOSED", "OnAuctionClosed")
     self:RegisterEvent("TRADE_SHOW", "OnTradeShow")
     self:RegisterEvent("TRADE_CLOSED", "OnTradeClosed")
+    self:RegisterEvent("CHAT_MSG_LOOT", "OnChatMsgLoot")
 
     -- Hook Default Blizzard Bag Functions
     self:HookBlizzardBagFrames()
 end
 
 -- Event Callbacks
+function BFB:OnChatMsgLoot(event, msg)
+    if not msg then return end
+    local itemID = msg:match("|Hitem:(%d+)")
+    if itemID and self.CategoryEngine and self.CategoryEngine.MarkRecent then
+        self.CategoryEngine:MarkRecent(tonumber(itemID))
+        TriggerBagUpdate()
+    end
+end
+
 function BFB:OnBagUpdate(event, bagID)
     TriggerBagUpdate()
 end

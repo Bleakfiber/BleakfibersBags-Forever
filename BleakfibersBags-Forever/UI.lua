@@ -664,7 +664,7 @@ function UI:BuildOptions(parentContainer, isMasterHub)
     pDisplay:SetAllPoints(scrollChild)
     tabPanes["display"] = pDisplay
 
-    local hOverlays = self:CreateSectionHeader(pDisplay, "Item Slot Overlays", 16, 0)
+    local hOverlays = self:CreateSectionHeader(pDisplay, "Item Slot Overlays & Usability", 16, 0)
 
     local cbQualityGlow = self:CreateCheckbox(pDisplay, "BFB_CbQualityGlow", "Item Quality Border Glow", 16, 0,
         function() return db.showQualityGlow ~= false end,
@@ -706,7 +706,69 @@ function UI:BuildOptions(parentContainer, isMasterHub)
         "Displays the item level text overlay on equippable armor and weapons."
     )
 
-    local hFrameElements = self:CreateSectionHeader(pDisplay, "Window Elements", 16, 0)
+    local cbTintUnusable = self:CreateCheckbox(pDisplay, "BFB_CbTintUnusable", "Red Tint Unusable Equipment", 16, 0,
+        function() return db.tintUnusable ~= false end,
+        function(v)
+            db.tintUnusable = v
+            if BFB.BagFrame and BFB.BagFrame.UpdateSlots then BFB.BagFrame:UpdateSlots() end
+            if BFB.BankFrame and BFB.BankFrame.UpdateSlots then BFB.BankFrame:UpdateSlots() end
+        end,
+        "Applies a subtle red tint to armor and weapons your character cannot equip due to class, level, or proficiency restrictions."
+    )
+
+    local cbSpecialtyBags = self:CreateCheckbox(pDisplay, "BFB_CbSpecialtyBags", "Highlight Specialty Container Slots", 16, 0,
+        function() return db.highlightSpecialtyBags ~= false end,
+        function(v)
+            db.highlightSpecialtyBags = v
+            if BFB.BagFrame and BFB.BagFrame.UpdateSlots then BFB.BagFrame:UpdateSlots() end
+            if BFB.BankFrame and BFB.BankFrame.UpdateSlots then BFB.BankFrame:UpdateSlots() end
+        end,
+        "Color-codes empty slots belonging to specialty bags (Soul, Herb, Mining, Enchanting, and Quivers/Ammo pouches)."
+    )
+
+    local hRecent = self:CreateSectionHeader(pDisplay, "Recent Items & Smart Categories", 16, 0)
+
+    local cbRecentItems = self:CreateCheckbox(pDisplay, "BFB_CbRecentItems", "Recent Items Smart Category", 16, 0,
+        function() return db.enableRecentItems ~= false end,
+        function(v)
+            db.enableRecentItems = v
+            if BFB.BagFrame and BFB.BagFrame.UpdateLayout then BFB.BagFrame:UpdateLayout() end
+        end,
+        "Automatically places newly looted items into a top-priority 'Recent Items' category with a cyan indicator."
+    )
+
+    local slRecentTimeout = self:CreateSlider(pDisplay, "BFB_SlRecentTimeout", "Recent Window (Min)", 1, 15, 1, 16, 0,
+        function() return db.recentTimeout or 5 end,
+        function(v)
+            db.recentTimeout = v
+        end,
+        "%d min",
+        "Number of minutes newly looted items stay categorized in the Recent Items section."
+    )
+
+    local btnClearRecent = self:CreateButton(pDisplay, "BFB_BtnClearRecent", "Clear Recent Cache", 16, 0, 150, 22, function()
+        if BFB.CategoryEngine and BFB.CategoryEngine.ClearRecent then
+            BFB.CategoryEngine:ClearRecent()
+            if BFB.BagFrame and BFB.BagFrame.UpdateLayout then BFB.BagFrame:UpdateLayout() end
+            print("|cff00c0ffBleakfiber's Bags:|r Recent items cache cleared.")
+        end
+    end)
+
+    local btnClearOverrides = self:CreateButton(pDisplay, "BFB_BtnClearOverrides", "Reset Item Overrides", 16, 0, 160, 22, function()
+        if db.customCategoryOverrides then
+            wipe(db.customCategoryOverrides)
+            if BFB.BagFrame and BFB.BagFrame.UpdateLayout then BFB.BagFrame:UpdateLayout() end
+            if BFB.BankFrame and BFB.BankFrame.UpdateLayout then BFB.BankFrame:UpdateLayout() end
+            print("|cff00c0ffBleakfiber's Bags:|r Custom item category assignments reset.")
+        end
+    end)
+
+    local categoryNote = pDisplay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    categoryNote:SetText("|cff888888Tip: Alt + Right-Click any item in your bags or bank to assign it to a custom category.|r")
+    categoryNote:SetWordWrap(true)
+    categoryNote:SetJustifyH("LEFT")
+
+    local hFrameElements = self:CreateSectionHeader(pDisplay, "Window Elements & Search", 16, 0)
 
     local cbBagBar = self:CreateCheckbox(pDisplay, "BFB_CbBagBar", "Show Equipped Bags Drawer", 16, 0,
         function() return db.showBagSlotBar end,
@@ -724,7 +786,7 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             if BFB.BagFrame and BFB.BagFrame.UpdateLayout then BFB.BagFrame:UpdateLayout() end
             if BFB.BankFrame and BFB.BankFrame.UpdateLayout then BFB.BankFrame:UpdateLayout() end
         end,
-        "Displays the interactive search input bar for live real-time inventory filtering."
+        "Displays the interactive search input bar with advanced keyword syntax support (boe, bop, quest, gear, >lvl)."
     )
 
     local btnResetPos = self:CreateButton(pDisplay, "BFB_BtnResetPos", "Reset Window Positions", 16, 0, 180, 24, function()
@@ -750,7 +812,7 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             cbJunkIcon:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col2X, y)
             if cbQualityGlow.text then cbQualityGlow.text:SetWidth(colWidth - 32) end
             if cbJunkIcon.text then cbJunkIcon.text:SetWidth(colWidth - 32) end
-            y = y - 32
+            y = y - 30
 
             cbQuestGlow:ClearAllPoints()
             cbQuestGlow:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
@@ -758,9 +820,17 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             cbItemLevel:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col2X, y)
             if cbQuestGlow.text then cbQuestGlow.text:SetWidth(colWidth - 32) end
             if cbItemLevel.text then cbItemLevel.text:SetWidth(colWidth - 32) end
-            y = y - 44
+            y = y - 30
+
+            cbTintUnusable:ClearAllPoints()
+            cbTintUnusable:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
+            cbSpecialtyBags:ClearAllPoints()
+            cbSpecialtyBags:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col2X, y)
+            if cbTintUnusable.text then cbTintUnusable.text:SetWidth(colWidth - 32) end
+            if cbSpecialtyBags.text then cbSpecialtyBags.text:SetWidth(colWidth - 32) end
+            y = y - 40
         else
-            local list = { cbQualityGlow, cbJunkIcon, cbQuestGlow, cbItemLevel }
+            local list = { cbQualityGlow, cbJunkIcon, cbQuestGlow, cbItemLevel, cbTintUnusable, cbSpecialtyBags }
             for _, cb in ipairs(list) do
                 cb:ClearAllPoints()
                 cb:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
@@ -769,6 +839,45 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             end
             y = y - 10
         end
+
+        hRecent:ClearAllPoints()
+        hRecent:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
+        y = y - 26
+
+        if isWide then
+            cbRecentItems:ClearAllPoints()
+            cbRecentItems:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
+            slRecentTimeout:ClearAllPoints()
+            slRecentTimeout:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col2X, y)
+            if cbRecentItems.text then cbRecentItems.text:SetWidth(colWidth - 32) end
+            y = y - 48
+
+            btnClearRecent:ClearAllPoints()
+            btnClearRecent:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
+            btnClearOverrides:ClearAllPoints()
+            btnClearOverrides:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col2X, y)
+            y = y - 34
+        else
+            cbRecentItems:ClearAllPoints()
+            cbRecentItems:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
+            if cbRecentItems.text then cbRecentItems.text:SetWidth(colWidth - 32) end
+            y = y - 32
+
+            slRecentTimeout:ClearAllPoints()
+            slRecentTimeout:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
+            y = y - 48
+
+            btnClearRecent:ClearAllPoints()
+            btnClearRecent:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
+            btnClearOverrides:ClearAllPoints()
+            btnClearOverrides:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X + 160, y)
+            y = y - 34
+        end
+
+        categoryNote:ClearAllPoints()
+        categoryNote:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
+        categoryNote:SetWidth(w - 32)
+        y = y - 36
 
         hFrameElements:ClearAllPoints()
         hFrameElements:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
@@ -781,7 +890,7 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             cbSearchBar:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col2X, y)
             if cbBagBar.text then cbBagBar.text:SetWidth(colWidth - 32) end
             if cbSearchBar.text then cbSearchBar.text:SetWidth(colWidth - 32) end
-            y = y - 44
+            y = y - 40
         else
             cbBagBar:ClearAllPoints()
             cbBagBar:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
@@ -790,7 +899,7 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             cbSearchBar:ClearAllPoints()
             cbSearchBar:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
             if cbSearchBar.text then cbSearchBar.text:SetWidth(colWidth - 32) end
-            y = y - 38
+            y = y - 36
         end
 
         btnResetPos:ClearAllPoints()
@@ -1397,3 +1506,4 @@ function UI:ToggleStandaloneWindow()
         win:Show()
     end
 end
+

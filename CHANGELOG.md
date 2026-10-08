@@ -2,6 +2,28 @@
 
 All notable changes to **Bleakfiber's Bags - Forever** are documented below.
 
+## [1.4.0] - 2026-10-08: Phase 5 Advanced Item Intelligence, Recent Items & Specialty Bags
+
+### Added
+- **Recent Items Engine & Smart Category (`CategoryEngine.lua`, `Core.lua`)**:
+  - Automatically captures looted items from chat log (`CHAT_MSG_LOOT`) and surfaces them into a high-priority "Recent Items" section at the top of the categorized bag window.
+  - Features an eye-catching cyan diamond corner indicator on newly acquired items.
+  - Configurable expiration window (1 to 15 minutes, default 5) with a dedicated "Clear Recent Items Cache" utility.
+- **Equipment Usability Scanner & Red Tint (`ItemButton.lua`)**:
+  - Implemented hidden tooltip scanning engine detecting level, class, and armor/weapon proficiency restrictions.
+  - Automatically tints unusable equipment with a distinct red overlay so players instantly know what gear they cannot equip.
+- **Specialty Container Slot Recognition (`ItemButton.lua`)**:
+  - Detects specialty profession and class bags (Soul Bags, Herb Bags, Mining Sacks, Enchanting Bags, and Quivers/Ammo pouches).
+  - Empty slots inside specialty containers are color-coded (Purple for Soul, Green for Herb, Orange for Mining, Blue for Enchanting, Yellow for Ammo) to prevent accidental item misplacement.
+- **Custom Item Category Overrides & Context Menu (`CategoryEngine.lua`, `ItemButton.lua`)**:
+  - Alt + Right-Click any item in your bags or bank to open a fast Dark Slate & Gold context menu allowing direct re-assignment to any category (*Quest Items*, *Equipment & Gear*, *Consumables*, *Trade Goods*, *Recipes*, *Miscellaneous*, *Junk*, or *Reset to Default*).
+  - Persists across sessions in `db.customCategoryOverrides` with a one-click reset button in settings.
+- **Advanced Search Keyword Syntax (`ItemButton.lua`)**:
+  - Expanded search filter to recognize rarity keywords (`poor`/`grey`, `common`, `uncommon`, `rare`, `epic`, `legendary`).
+  - Category terms (`quest`, `junk`, `gear`/`armor`/`weapon`, `consumable`, `reagent`/`craft`, `recipe`).
+  - Binding status (`boe`, `bop`, `soulbound`).
+  - Numeric level comparison queries (e.g. `>30`, `<45`, `=40`).
+
 ## [1.3.0] - 2026-10-08: Phase 4 Native Configuration GUI & Profile Engine
 
 ### Added
