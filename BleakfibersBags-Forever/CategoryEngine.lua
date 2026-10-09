@@ -3,6 +3,17 @@ local addonName, BFB = ...
 BFB.CategoryEngine = {}
 local CategoryEngine = BFB.CategoryEngine
 
+-- Safe API wrapper for item information across Classic and modern clients
+local function GetItemInfo(item)
+    if not item then return nil end
+    if C_Item and C_Item.GetItemInfo then
+        return C_Item.GetItemInfo(item)
+    elseif _G.GetItemInfo then
+        return _G.GetItemInfo(item)
+    end
+    return nil
+end
+
 -- Recent Items tracking cache (in-memory, indexed by itemID -> timestamp)
 BFB.recentItems = BFB.recentItems or {}
 

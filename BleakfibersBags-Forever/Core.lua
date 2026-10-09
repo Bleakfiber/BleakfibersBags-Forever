@@ -5,6 +5,16 @@ LibStub("AceAddon-3.0"):NewAddon(BFB, "BleakfibersBags", "AceEvent-3.0", "AceHoo
 
 _G["BleakfibersBagsForever"] = BFB
 
+local function GetItemInfo(item)
+    if not item then return nil end
+    if C_Item and C_Item.GetItemInfo then
+        return C_Item.GetItemInfo(item)
+    elseif _G.GetItemInfo then
+        return _G.GetItemInfo(item)
+    end
+    return nil
+end
+
 local updatePending = false
 local function TriggerBagUpdate()
     if updatePending then return end

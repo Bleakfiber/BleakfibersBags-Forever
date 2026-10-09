@@ -1,5 +1,10 @@
 # Changelog - Bleakfiber's Bags (Forever)
 
+## [1.5.0] - 2026-10-08
+
+### Added
+- Add typography and dropdown configuration; resolve C_Item.GetItemInfo compatibility and nested block comment syntax
+
 All notable changes to **Bleakfiber's Bags - Forever** are documented below.
 
 ## [1.4.0] - 2026-10-08: Phase 5 Advanced Item Intelligence, Recent Items & Specialty Bags

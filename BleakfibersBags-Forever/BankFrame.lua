@@ -3,6 +3,16 @@ local addonName, BFB = ...
 BFB.BankFrame = {}
 local BankFrame = BFB.BankFrame
 
+local function GetItemInfo(item)
+    if not item then return nil end
+    if C_Item and C_Item.GetItemInfo then
+        return C_Item.GetItemInfo(item)
+    elseif _G.GetItemInfo then
+        return _G.GetItemInfo(item)
+    end
+    return nil
+end
+
 local bankFrame = nil
 local bankMoverOverlay = nil
 local activeBankButtons = {}

@@ -1,7 +1,18 @@
 local addonName, BFB = ...
 
 BFB.addonName = addonName
-BFB.version = "1.4.0"
+BFB.version = "1.5.0"
+
+-- Safe API wrapper for item info
+function BFB:GetItemData(item)
+    if not item then return nil end
+    if C_Item and C_Item.GetItemInfo then
+        return C_Item.GetItemInfo(item)
+    elseif _G.GetItemInfo then
+        return _G.GetItemInfo(item)
+    end
+    return nil
+end
 
 local DB_DEFAULTS = {
     profile = {

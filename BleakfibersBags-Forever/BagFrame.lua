@@ -3,6 +3,16 @@ local addonName, BFB = ...
 BFB.BagFrame = {}
 local BagFrame = BFB.BagFrame
 
+local function GetItemInfo(item)
+    if not item then return nil end
+    if C_Item and C_Item.GetItemInfo then
+        return C_Item.GetItemInfo(item)
+    elseif _G.GetItemInfo then
+        return _G.GetItemInfo(item)
+    end
+    return nil
+end
+
 local mainFrame = nil
 local moverOverlay = nil
 local activeGridButtons = {}

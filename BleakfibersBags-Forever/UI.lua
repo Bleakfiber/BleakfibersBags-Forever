@@ -242,7 +242,6 @@ function UI:CreateSlider(parent, name, labelText, minVal, maxVal, step, x, y, ge
 end
 
 --[[-----------------------------------------------------------------------------
---[[-----------------------------------------------------------------------------
     Widget Factory: Dropdown & Font Dropdown (Custom Dark Slate & Gold Popup)
 -------------------------------------------------------------------------------]]
 local sharedDropdownMenu = nil
