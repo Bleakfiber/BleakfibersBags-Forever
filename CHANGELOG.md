@@ -1,5 +1,12 @@
 # Changelog - Bleakfiber's Bags (Forever)
 
+## [1.5.1] - 2026-10-09
+
+### Fixed
+- **Tooltip Nil Safety (`BankCache.lua`)**: Safely handle tooltip data parameters and verify method availability before inspecting item hyperlinks, resolving errors during shopping and comparison tooltip rendering.
+- **Secure Item Interaction & Taint Isolation (`ItemButton.lua`, `BagFrame.lua`, `BankFrame.lua`)**: Restructured item button hierarchy with dedicated bag container frames and prevented direct Lua bagID mutation, ensuring protected actions like `UseContainerItem()` execute with zero execution taint.
+- **Independent Button Pool Lifecycles**: Provided isolated button release management between bag and bank grids to prevent frame contention when interacting at the bank.
+
 ## [1.5.0] - 2026-10-08
 
 ### Added

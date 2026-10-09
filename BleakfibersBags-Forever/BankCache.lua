@@ -126,14 +126,26 @@ end
 
 -- Hook Tooltips to Display Bank Count
 function BankCache:InitTooltipHook()
-    local function AddBankInfoToTooltip(tooltip)
+    local function AddBankInfoToTooltip(tooltip, data)
         local db = BFB.db or {}
         if db.showBankTooltip == false then return end
+        if not tooltip or not tooltip.AddLine or not tooltip.AddDoubleLine then return end
 
-        local _, link = tooltip:GetItem()
-        if not link then return end
+        local link
+        if data and data.hyperlink then
+            link = data.hyperlink
+        elseif tooltip.GetItem then
+            local _, l = tooltip:GetItem()
+            link = l
+        end
 
-        local itemID = tonumber(link:match("item:(%d+)"))
+        local itemID
+        if data and data.id then
+            itemID = data.id
+        elseif link then
+            local match = link:match("item:(%d+)")
+            if match then itemID = tonumber(match) end
+        end
         if not itemID then return end
 
         local total, breakdown = BankCache:GetBankItemCount(itemID)
@@ -147,7 +159,6 @@ function BankCache:InitTooltipHook()
                     tooltip:AddDoubleLine("  " .. charLabel, tostring(entry.count), 0.7, 0.7, 0.7, 1, 1, 1)
                 end
             end
-            tooltip:Show()
         end
     end
 

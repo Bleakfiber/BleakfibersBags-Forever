@@ -435,14 +435,16 @@ function ItemButtons:Acquire(parent)
         -- Fallback tooltip and hover handlers if not provided by template
         if not button:GetScript("OnEnter") then
             button:SetScript("OnEnter", function(self)
-                if self.bagID and self.slotID then
+                local bID = self._bfbBagID or (self.GetBagID and self:GetBagID()) or (self:GetParent() and self:GetParent():GetID())
+                local sID = self._bfbSlotID or self:GetID()
+                if bID and sID then
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     if C_Container and C_Container.UseContainerItem then
-                        GameTooltip:SetBagItem(self.bagID, self.slotID)
+                        GameTooltip:SetBagItem(bID, sID)
                     elseif GameTooltip.SetBagItem then
-                        GameTooltip:SetBagItem(self.bagID, self.slotID)
-                    elseif self.itemLink then
-                        GameTooltip:SetHyperlink(self.itemLink)
+                        GameTooltip:SetBagItem(bID, sID)
+                    elseif self.itemLink or self._bfbItemLink then
+                        GameTooltip:SetHyperlink(self.itemLink or self._bfbItemLink)
                     end
                     GameTooltip:Show()
                 end
@@ -452,61 +454,71 @@ function ItemButtons:Acquire(parent)
             end)
         end
 
+        -- Handle Alt + Right Click for Category Assignment without tainting Blizzard's OnClick
+        button:HookScript("OnMouseDown", function(self, mouseBtn)
+            if mouseBtn == "RightButton" and IsAltKeyDown() and (self.itemID or self._bfbItemID) then
+                BFB:ShowCategoryContextMenu(self, self.itemID or self._bfbItemID, self.itemLink or self._bfbItemLink)
+            end
+        end)
+
         -- Fallback click and drag handlers if template does not implement them
         if not button:GetScript("OnClick") then
             button:SetScript("OnClick", function(self, mouseBtn)
-                if mouseBtn == "RightButton" and IsAltKeyDown() and self.itemID then
-                    BFB:ShowCategoryContextMenu(self, self.itemID, self.itemLink)
+                if mouseBtn == "RightButton" and IsAltKeyDown() and (self.itemID or self._bfbItemID) then
+                    BFB:ShowCategoryContextMenu(self, self.itemID or self._bfbItemID, self.itemLink or self._bfbItemLink)
                     return
                 end
-                if not self.bagID or not self.slotID then return end
+                local bID = self._bfbBagID or (self.GetBagID and self:GetBagID()) or (self:GetParent() and self:GetParent():GetID())
+                local sID = self._bfbSlotID or self:GetID()
+                if not bID or not sID then return end
                 if mouseBtn == "LeftButton" then
                     if C_Container and C_Container.PickupContainerItem then
-                        C_Container.PickupContainerItem(self.bagID, self.slotID)
+                        C_Container.PickupContainerItem(bID, sID)
                     elseif PickupContainerItem then
-                        PickupContainerItem(self.bagID, self.slotID)
+                        PickupContainerItem(bID, sID)
                     end
                 elseif mouseBtn == "RightButton" then
                     if C_Container and C_Container.UseContainerItem then
-                        C_Container.UseContainerItem(self.bagID, self.slotID)
+                        C_Container.UseContainerItem(bID, sID)
                     elseif UseContainerItem then
-                        UseContainerItem(self.bagID, self.slotID)
+                        UseContainerItem(bID, sID)
                     end
-                end
-            end)
-        else
-            -- Alt + Right Click Handler for Custom Category Assignment
-            button:HookScript("OnClick", function(self, mouseBtn)
-                if mouseBtn == "RightButton" and IsAltKeyDown() and self.itemID then
-                    BFB:ShowCategoryContextMenu(self, self.itemID, self.itemLink)
                 end
             end)
         end
 
         if not button:GetScript("OnDragStart") then
             button:SetScript("OnDragStart", function(self)
-                if not self.bagID or not self.slotID then return end
+                local bID = self._bfbBagID or (self.GetBagID and self:GetBagID()) or (self:GetParent() and self:GetParent():GetID())
+                local sID = self._bfbSlotID or self:GetID()
+                if not bID or not sID then return end
                 if C_Container and C_Container.PickupContainerItem then
-                    C_Container.PickupContainerItem(self.bagID, self.slotID)
+                    C_Container.PickupContainerItem(bID, sID)
                 elseif PickupContainerItem then
-                    PickupContainerItem(self.bagID, self.slotID)
+                    PickupContainerItem(bID, sID)
                 end
             end)
             button:SetScript("OnReceiveDrag", function(self)
-                if not self.bagID or not self.slotID then return end
+                local bID = self._bfbBagID or (self.GetBagID and self:GetBagID()) or (self:GetParent() and self:GetParent():GetID())
+                local sID = self._bfbSlotID or self:GetID()
+                if not bID or not sID then return end
                 if C_Container and C_Container.PickupContainerItem then
-                    C_Container.PickupContainerItem(self.bagID, self.slotID)
+                    C_Container.PickupContainerItem(bID, sID)
                 elseif PickupContainerItem then
-                    PickupContainerItem(self.bagID, self.slotID)
+                    PickupContainerItem(bID, sID)
                 end
             end)
         end
 
-        -- Helper method to bind bag and slot
+        -- Helper method to bind bag and slot without tainting Blizzard container frame
         function button:SetBagSlot(bagID, slotID)
-            self.bagID = bagID
-            self.slotID = slotID
+            self._bfbBagID = bagID
+            self._bfbSlotID = slotID
             self:SetID(slotID)
+            -- Crucial: self.bagID is left nil so Blizzard's ContainerFrameItemButtonMixin:GetBagID()
+            -- queries self:GetParent():GetID() (clean C frame ID) without addon taint.
+            self.bagID = nil
+            self.slotID = nil
         end
     end
 
@@ -523,26 +535,43 @@ function ItemButtons:Acquire(parent)
     return button
 end
 
+local function ResetPooledButton(btn)
+    btn:Hide()
+    btn:ClearAllPoints()
+    btn.bagID = nil
+    btn.slotID = nil
+    btn._bfbBagID = nil
+    btn._bfbSlotID = nil
+    btn.itemID = nil
+    btn._bfbItemID = nil
+    btn.itemLink = nil
+    btn._bfbItemLink = nil
+    btn.itemName = nil
+    btn.itemQuality = nil
+    if btn.QualityBorder then btn.QualityBorder:Hide() end
+    if btn.SpecialtyBorder then btn.SpecialtyBorder:Hide() end
+    if btn.UnusableOverlay then btn.UnusableOverlay:Hide() end
+    if btn.RecentGlow then btn.RecentGlow:Hide() end
+    if btn.JunkIcon then btn.JunkIcon:Hide() end
+    if btn.QuestIcon then btn.QuestIcon:Hide() end
+    if btn.icon then btn.icon:SetVertexColor(1.0, 1.0, 1.0) end
+    btn:SetAlpha(1.0)
+    table.insert(buttonPool, btn)
+end
+
+-- Release a specific list of buttons back to Pool
+function ItemButtons:ReleaseButtons(buttonList)
+    if not buttonList then return end
+    for _, btn in ipairs(buttonList) do
+        ResetPooledButton(btn)
+    end
+    wipe(buttonList)
+end
+
 -- Release All Active Buttons back to Pool
 function ItemButtons:ReleaseAll()
     for _, btn in ipairs(activeButtons) do
-        btn:Hide()
-        btn:ClearAllPoints()
-        btn.bagID = nil
-        btn.slotID = nil
-        btn.itemID = nil
-        btn.itemLink = nil
-        btn.itemName = nil
-        btn.itemQuality = nil
-        if btn.QualityBorder then btn.QualityBorder:Hide() end
-        if btn.SpecialtyBorder then btn.SpecialtyBorder:Hide() end
-        if btn.UnusableOverlay then btn.UnusableOverlay:Hide() end
-        if btn.RecentGlow then btn.RecentGlow:Hide() end
-        if btn.JunkIcon then btn.JunkIcon:Hide() end
-        if btn.QuestIcon then btn.QuestIcon:Hide() end
-        if btn.icon then btn.icon:SetVertexColor(1.0, 1.0, 1.0) end
-        btn:SetAlpha(1.0)
-        table.insert(buttonPool, btn)
+        ResetPooledButton(btn)
     end
     wipe(activeButtons)
 end
@@ -621,7 +650,9 @@ function ItemButtons:UpdateButton(button, bagID, slotID, searchTerm)
         if match then itemID = tonumber(match) end
     end
     button.itemID = itemID
+    button._bfbItemID = itemID
     button.itemLink = link
+    button._bfbItemLink = link
 
     local isQuestItem = false
     local itemName = ""

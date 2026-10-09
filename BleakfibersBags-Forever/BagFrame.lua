@@ -612,9 +612,28 @@ function BagFrame:UpdateLayout()
     local isCategoryView = (db.viewMode == "category")
     db.collapsedCategories = db.collapsedCategories or {}
 
-    BFB.ItemButtons:ReleaseAll()
+    if BFB.ItemButtons.ReleaseButtons then
+        BFB.ItemButtons:ReleaseButtons(activeGridButtons)
+    else
+        BFB.ItemButtons:ReleaseAll()
+        wipe(activeGridButtons)
+    end
     ReleaseCategoryHeaders()
-    wipe(activeGridButtons)
+
+    if not mainFrame.bagContainers then
+        mainFrame.bagContainers = {}
+    end
+    local function GetBagContainer(bagID)
+        local c = mainFrame.bagContainers[bagID]
+        if not c then
+            c = CreateFrame("Frame", nil, mainFrame.GridContainer)
+            c:SetID(bagID)
+            c:SetAllPoints(mainFrame.GridContainer)
+            c:Show()
+            mainFrame.bagContainers[bagID] = c
+        end
+        return c
+    end
 
     local totalSlots = 0
     local freeSlots = 0
@@ -645,7 +664,8 @@ function BagFrame:UpdateLayout()
         if rows < 1 then rows = 1 end
 
         for idx, slotData in ipairs(slotList) do
-            local btn = BFB.ItemButtons:Acquire(mainFrame.GridContainer)
+            local bagContainer = GetBagContainer(slotData.bag)
+            local btn = BFB.ItemButtons:Acquire(bagContainer)
             btn:ClearAllPoints()
             btn:SetSize(btnSize, btnSize)
 
@@ -694,7 +714,8 @@ function BagFrame:UpdateLayout()
                 if catRows < 1 then catRows = 1 end
 
                 for idx, slotData in ipairs(catGroup.slots) do
-                    local btn = BFB.ItemButtons:Acquire(mainFrame.GridContainer)
+                    local bagContainer = GetBagContainer(slotData.bag)
+                    local btn = BFB.ItemButtons:Acquire(bagContainer)
                     btn:ClearAllPoints()
                     btn:SetSize(btnSize, btnSize)
 
