@@ -1,5 +1,10 @@
 # Changelog - Bleakfiber's Bags (Forever)
 
+## [1.5.4] - 2026-10-09
+
+### Added
+- Fixed dropdown and category collapse symbol glyphs showing as broken rectangular boxes across fonts.
+
 ## [1.5.3] - 2026-10-09
 
 ### Added

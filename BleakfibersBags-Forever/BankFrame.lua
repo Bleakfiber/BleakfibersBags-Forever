@@ -77,7 +77,7 @@ local function AcquireBankCategoryHeader(parent, categoryID, titleText, count, c
 
     header:SetParent(parent)
     header.categoryID = categoryID
-    header.Arrow:SetText(isCollapsed and "|cffffd100▶|r" or "|cffffd100▼|r")
+    header.Arrow:SetText(isCollapsed and "|cffffd100[+]|r" or "|cffffd100[-]|r")
 
     local r = (color and color.r) or 1
     local g = (color and color.g) or 1
