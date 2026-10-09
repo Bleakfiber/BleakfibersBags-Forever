@@ -78,6 +78,13 @@ local DB_DEFAULTS = {
             borderB = 0.15,
             borderA = 1.0,
         },
+
+        -- Typography & Fonts
+        font = "Nata Sans Regular",
+        headerFont = "Nata Sans Bold",
+        fontOutline = "OUTLINE",
+        headerFontSize = 12,
+        countFontSize = 9,
     },
 }
 

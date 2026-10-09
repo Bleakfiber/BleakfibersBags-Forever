@@ -21,7 +21,8 @@ local function GetNumSlots(bagID)
     return 0
 end
 
-local function GetItemInfo(bagID, slotID)
+local function GetContainerItemInfoCompat(bagID, slotID)
+    if not bagID or not slotID then return nil end
     if C_Container and C_Container.GetContainerItemInfo then
         return C_Container.GetContainerItemInfo(bagID, slotID)
     elseif GetContainerItemInfo then
@@ -53,14 +54,26 @@ local function GetItemCooldown(bagID, slotID)
     return 0, 0, 0
 end
 
+local function GetItemInfoCompat(item)
+    if not item then return nil end
+    if _G.GetItemInfo then
+        return _G.GetItemInfo(item)
+    elseif C_Item and C_Item.GetItemInfo then
+        return C_Item.GetItemInfo(item)
+    end
+    return nil
+end
+
 BFB.GetNumSlots = GetNumSlots
-BFB.GetItemInfo = GetItemInfo
+BFB.GetItemInfo = GetContainerItemInfoCompat
+BFB.GetContainerItemInfo = GetContainerItemInfoCompat
 BFB.GetItemCooldown = GetItemCooldown
+BFB.GetItemInfoCompat = GetItemInfoCompat
 
 -- Check if an item is equippable and cannot be used by the character
 function BFB:IsItemUnusable(bagID, slotID, itemLink)
     if not itemLink then return false end
-    local _, _, _, _, _, _, _, _, equipLoc = GetItemInfo(itemLink)
+    local _, _, _, _, _, _, _, _, equipLoc = GetItemInfoCompat(itemLink)
     if not equipLoc or equipLoc == "" or equipLoc == "INVTYPE_NON_EQUIP" then
         return false
     end
@@ -132,7 +145,7 @@ local function MatchesAdvancedSearch(itemName, link, itemQuality, classID, equip
     end
 
     if not link then return false end
-    local _, _, _, itemLevel, _, itemType, itemSubType = GetItemInfo(link)
+    local _, _, _, itemLevel, _, itemType, itemSubType = GetItemInfoCompat(link)
 
     -- 2. Item Type / Subtype Match
     if itemType and itemType:lower():find(termLower, 1, true) then return true end
@@ -282,6 +295,12 @@ function ItemButtons:Acquire(parent)
             button.Count = _G[btnName .. "Count"] or button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
             button.Count:SetPoint("BOTTOMRIGHT", -2, 2)
         end
+        local db = BFB.db or {}
+        local fFamily = BFB:FetchFont(db.font or BFB.DEFAULT_FONT_NAME)
+        local outline = db.fontOutline or "OUTLINE"
+        if outline == "None" or outline == "NONE" then outline = "" end
+        local cSize = db.countFontSize or 9
+        button.Count:SetFont(fFamily, cSize, outline)
         if not button.Cooldown then
             button.Cooldown = _G[btnName .. "Cooldown"] or CreateFrame("Cooldown", btnName .. "Cooldown", button, "CooldownFrameTemplate")
             button.Cooldown:SetAllPoints()
@@ -393,7 +412,7 @@ function ItemButtons:UpdateButton(button, bagID, slotID, searchTerm)
     button:SetBagSlot(bagID, slotID)
     local db = BFB.db or {}
     
-    local info = GetItemInfo(bagID, slotID)
+    local info = GetContainerItemInfoCompat(bagID, slotID)
     if not info or not info.iconFileID then
         -- Empty Slot
         button.icon:Hide()
@@ -468,7 +487,7 @@ function ItemButtons:UpdateButton(button, bagID, slotID, searchTerm)
     local classID, equipLoc
 
     if link then
-        local rawName, _, q, _, _, _, _, _, el, _, _, cID = GetItemInfo(link)
+        local rawName, _, q, _, _, _, _, _, el, _, _, cID = GetItemInfoCompat(link)
         if rawName then itemName = rawName end
         if q then quality = q end
         if cID then classID = cID end

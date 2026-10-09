@@ -37,20 +37,29 @@ local function AcquireCategoryHeader(parent, categoryID, titleText, count, color
         header:SetBackdropBorderColor(0.25, 0.30, 0.40, 0.70)
 
         local arrow = header:CreateFontString(nil, "OVERLAY")
-        arrow:SetFont(BFB:FetchFont(BFB.DEFAULT_HEADER_FONT_NAME), 9, "OUTLINE")
         arrow:SetPoint("LEFT", header, "LEFT", 4, 0)
         header.Arrow = arrow
 
         local title = header:CreateFontString(nil, "OVERLAY")
-        title:SetFont(BFB:FetchFont(BFB.DEFAULT_HEADER_FONT_NAME), 10, "OUTLINE")
         title:SetPoint("LEFT", arrow, "RIGHT", 4, 0)
         header.Title = title
 
         local countFs = header:CreateFontString(nil, "OVERLAY")
-        countFs:SetFont(BFB:FetchFont(BFB.DEFAULT_FONT_NAME), 9, "OUTLINE")
         countFs:SetPoint("RIGHT", header, "RIGHT", -6, 0)
         header.Count = countFs
     end
+
+    local db = BFB.db or {}
+    local fFamily = BFB:FetchFont(db.font or BFB.DEFAULT_FONT_NAME)
+    local hFamily = BFB:FetchFont(db.headerFont or BFB.DEFAULT_HEADER_FONT_NAME)
+    local outline = db.fontOutline or "OUTLINE"
+    if outline == "None" or outline == "NONE" then outline = "" end
+    local hSize = db.headerFontSize or 12
+    local cSize = db.countFontSize or 9
+
+    if header.Arrow then header.Arrow:SetFont(hFamily, math.max(8, hSize - 3), outline) end
+    if header.Title then header.Title:SetFont(hFamily, math.max(8, hSize - 2), outline) end
+    if header.Count then header.Count:SetFont(fFamily, cSize, outline) end
 
     header:SetParent(parent)
     header.categoryID = categoryID
@@ -136,6 +145,7 @@ function BagFrame:Init()
     closeText:SetFont(BFB:FetchFont(BFB.DEFAULT_HEADER_FONT_NAME), 13, "OUTLINE")
     closeText:SetText("|cffff4444✕|r")
     closeText:SetPoint("CENTER")
+    mainFrame.CloseText = closeText
     closeBtn:SetScript("OnClick", function()
         BagFrame:Hide()
     end)
@@ -267,6 +277,11 @@ function BagFrame:Init()
     clearText:SetText("|cff888888✕|r")
     clearText:SetPoint("CENTER")
     clearSearchBtn:Hide()
+
+    mainFrame.SearchBox = searchBox
+    mainFrame.SearchPlaceholder = searchPlaceholder
+    mainFrame.ClearText = clearText
+
     clearSearchBtn:SetScript("OnClick", function()
         searchBox:SetText("")
         searchBox:ClearFocus()
@@ -437,6 +452,8 @@ function BagFrame:Init()
     moverLabel:SetTextColor(0.2, 0.8, 1.0, 1.0)
     moverLabel:SetText("Bleakfiber's Bags Mover\n|cffffffffDrag to reposition|r\n|cffaaaaaaRight-Click to Lock|r")
     moverLabel:SetPoint("CENTER")
+    moverOverlay.Label = moverLabel
+    mainFrame.MoverOverlay = moverOverlay
 
     moverOverlay:SetScript("OnDragStart", function()
         if mainFrame:IsMovable() then
@@ -462,6 +479,33 @@ function BagFrame:Init()
 
     mainFrame:Hide()
     return mainFrame
+end
+
+-- Dynamically update all text typography on BagFrame
+function BagFrame:UpdateFonts()
+    if not mainFrame then return end
+    local db = BFB.db or {}
+    local font = BFB:FetchFont(db.font or BFB.DEFAULT_FONT_NAME)
+    local headerFont = BFB:FetchFont(db.headerFont or BFB.DEFAULT_HEADER_FONT_NAME)
+    local outline = db.fontOutline or "OUTLINE"
+    if outline == "None" or outline == "NONE" then outline = "" end
+    local hSize = db.headerFontSize or 12
+    local cSize = db.countFontSize or 9
+
+    if mainFrame.Title then mainFrame.Title:SetFont(headerFont, hSize, outline) end
+    if mainFrame.CloseText then mainFrame.CloseText:SetFont(headerFont, hSize + 1, outline) end
+    if mainFrame.SearchBox then mainFrame.SearchBox:SetFont(font, 10, "") end
+    if mainFrame.SearchPlaceholder then mainFrame.SearchPlaceholder:SetFont(font, 9, "") end
+    if mainFrame.ClearText then mainFrame.ClearText:SetFont(font, 9, outline) end
+    if mainFrame.FreeSlotsText then mainFrame.FreeSlotsText:SetFont(font, cSize + 1, outline) end
+    if mainFrame.MoneyText then mainFrame.MoneyText:SetFont(font, cSize + 1, outline) end
+    if moverOverlay and moverOverlay.Label then moverOverlay.Label:SetFont(headerFont, hSize, outline) end
+
+    for _, header in pairs(categoryHeaders) do
+        if header.Arrow then header.Arrow:SetFont(headerFont, math.max(8, hSize - 3), outline) end
+        if header.Title then header.Title:SetFont(headerFont, math.max(8, hSize - 2), outline) end
+        if header.Count then header.Count:SetFont(font, cSize, outline) end
+    end
 end
 
 -- Save Frame Position

@@ -294,3 +294,33 @@ function BFB:HookBlizzardBagFrames()
     end
 end
 
+-- Dynamically update fonts across all active windows
+function BFB:UpdateFonts()
+    if self.BagFrame and self.BagFrame.UpdateFonts then
+        self.BagFrame:UpdateFonts()
+    end
+    if self.BankFrame and self.BankFrame.UpdateFonts then
+        self.BankFrame:UpdateFonts()
+    end
+    local db = self.db or {}
+    local font = self:FetchFont(db.font or BFB.DEFAULT_FONT_NAME)
+    local outline = db.fontOutline or "OUTLINE"
+    if outline == "None" or outline == "NONE" then outline = "" end
+    local countSize = db.countFontSize or 9
+
+    if self.BagFrame and self.BagFrame.itemButtons then
+        for _, btn in pairs(self.BagFrame.itemButtons) do
+            if btn.Count then
+                btn.Count:SetFont(font, countSize, outline)
+            end
+        end
+    end
+    if self.BankFrame and self.BankFrame.itemButtons then
+        for _, btn in pairs(self.BankFrame.itemButtons) do
+            if btn.Count then
+                btn.Count:SetFont(font, countSize, outline)
+            end
+        end
+    end
+end
+

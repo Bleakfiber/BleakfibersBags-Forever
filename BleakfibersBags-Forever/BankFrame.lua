@@ -38,20 +38,29 @@ local function AcquireBankCategoryHeader(parent, categoryID, titleText, count, c
         header:SetBackdropBorderColor(0.25, 0.30, 0.40, 0.70)
 
         local arrow = header:CreateFontString(nil, "OVERLAY")
-        arrow:SetFont(BFB:FetchFont(BFB.DEFAULT_HEADER_FONT_NAME), 9, "OUTLINE")
         arrow:SetPoint("LEFT", header, "LEFT", 4, 0)
         header.Arrow = arrow
 
         local title = header:CreateFontString(nil, "OVERLAY")
-        title:SetFont(BFB:FetchFont(BFB.DEFAULT_HEADER_FONT_NAME), 10, "OUTLINE")
         title:SetPoint("LEFT", arrow, "RIGHT", 4, 0)
         header.Title = title
 
         local countFs = header:CreateFontString(nil, "OVERLAY")
-        countFs:SetFont(BFB:FetchFont(BFB.DEFAULT_FONT_NAME), 9, "OUTLINE")
         countFs:SetPoint("RIGHT", header, "RIGHT", -6, 0)
         header.Count = countFs
     end
+
+    local db = BFB.db or {}
+    local fFamily = BFB:FetchFont(db.font or BFB.DEFAULT_FONT_NAME)
+    local hFamily = BFB:FetchFont(db.headerFont or BFB.DEFAULT_HEADER_FONT_NAME)
+    local outline = db.fontOutline or "OUTLINE"
+    if outline == "None" or outline == "NONE" then outline = "" end
+    local hSize = db.headerFontSize or 12
+    local cSize = db.countFontSize or 9
+
+    if header.Arrow then header.Arrow:SetFont(hFamily, math.max(8, hSize - 3), outline) end
+    if header.Title then header.Title:SetFont(hFamily, math.max(8, hSize - 2), outline) end
+    if header.Count then header.Count:SetFont(fFamily, cSize, outline) end
 
     header:SetParent(parent)
     header.categoryID = categoryID
@@ -137,6 +146,7 @@ function BankFrame:Init()
     closeText:SetFont(BFB:FetchFont(BFB.DEFAULT_HEADER_FONT_NAME), 13, "OUTLINE")
     closeText:SetText("|cffff4444✕|r")
     closeText:SetPoint("CENTER")
+    bankFrame.CloseText = closeText
     closeBtn:SetScript("OnClick", function()
         BankFrame:Hide()
     end)
@@ -226,6 +236,7 @@ function BankFrame:Init()
     searchPlaceholder:SetTextColor(0.5, 0.5, 0.5, 0.8)
     searchPlaceholder:SetText("Search...")
     searchPlaceholder:SetPoint("LEFT", 6, 0)
+    bankFrame.SearchPlaceholder = searchPlaceholder
 
     local clearSearchBtn = CreateFrame("Button", nil, searchBox)
     clearSearchBtn:SetSize(14, 14)
@@ -235,6 +246,7 @@ function BankFrame:Init()
     clearText:SetText("|cff888888✕|r")
     clearText:SetPoint("CENTER")
     clearSearchBtn:Hide()
+    bankFrame.ClearText = clearText
     clearSearchBtn:SetScript("OnClick", function()
         searchBox:SetText("")
         searchBox:ClearFocus()
@@ -386,6 +398,8 @@ function BankFrame:Init()
     moverLabel:SetTextColor(0.2, 0.8, 1.0, 1.0)
     moverLabel:SetText("Bleakfiber's Bank Mover\n|cffffffffDrag to reposition|r\n|cffaaaaaaRight-Click to Lock|r")
     moverLabel:SetPoint("CENTER")
+    bankMoverOverlay.Label = moverLabel
+    bankFrame.MoverOverlay = bankMoverOverlay
 
     bankMoverOverlay:SetScript("OnDragStart", function()
         if bankFrame:IsMovable() then
@@ -407,6 +421,32 @@ function BankFrame:Init()
 
     bankFrame:Hide()
     return bankFrame
+end
+
+-- Dynamically update all text typography on BankFrame
+function BankFrame:UpdateFonts()
+    if not bankFrame then return end
+    local db = BFB.db or {}
+    local font = BFB:FetchFont(db.font or BFB.DEFAULT_FONT_NAME)
+    local headerFont = BFB:FetchFont(db.headerFont or BFB.DEFAULT_HEADER_FONT_NAME)
+    local outline = db.fontOutline or "OUTLINE"
+    if outline == "None" or outline == "NONE" then outline = "" end
+    local hSize = db.headerFontSize or 12
+    local cSize = db.countFontSize or 9
+
+    if bankFrame.Title then bankFrame.Title:SetFont(headerFont, hSize, outline) end
+    if bankFrame.CloseText then bankFrame.CloseText:SetFont(headerFont, hSize + 1, outline) end
+    if bankFrame.SearchBox then bankFrame.SearchBox:SetFont(font, 10, "") end
+    if bankFrame.SearchPlaceholder then bankFrame.SearchPlaceholder:SetFont(font, 9, "") end
+    if bankFrame.ClearText then bankFrame.ClearText:SetFont(font, 9, outline) end
+    if bankFrame.FreeSlotsText then bankFrame.FreeSlotsText:SetFont(font, cSize + 1, outline) end
+    if bankMoverOverlay and bankMoverOverlay.Label then bankMoverOverlay.Label:SetFont(headerFont, hSize, outline) end
+
+    for _, header in pairs(bankCategoryHeaders) do
+        if header.Arrow then header.Arrow:SetFont(headerFont, math.max(8, hSize - 3), outline) end
+        if header.Title then header.Title:SetFont(headerFont, math.max(8, hSize - 2), outline) end
+        if header.Count then header.Count:SetFont(font, cSize, outline) end
+    end
 end
 
 -- Save Bank Position

@@ -242,10 +242,120 @@ function UI:CreateSlider(parent, name, labelText, minVal, maxVal, step, x, y, ge
 end
 
 --[[-----------------------------------------------------------------------------
-    Widget Factory: Cycle Button (Selector)
+--[[-----------------------------------------------------------------------------
+    Widget Factory: Dropdown & Font Dropdown (Custom Dark Slate & Gold Popup)
 -------------------------------------------------------------------------------]]
-function UI:CreateCycleButton(parent, name, labelText, options, x, y, width, getFunc, setFunc, tooltip)
-    width = width or 150
+local sharedDropdownMenu = nil
+local sharedDropdownCatcher = nil
+
+local function GetOrCreateLocalDropdownMenu()
+    if sharedDropdownMenu then return sharedDropdownMenu end
+
+    sharedDropdownCatcher = CreateFrame("Button", "BFB_DropdownCatcher", UIParent)
+    sharedDropdownCatcher:SetFrameStrata("FULLSCREEN_DIALOG")
+    sharedDropdownCatcher:SetFrameLevel(98)
+    sharedDropdownCatcher:SetAllPoints(UIParent)
+    sharedDropdownCatcher:EnableMouse(true)
+    sharedDropdownCatcher:Hide()
+    sharedDropdownCatcher:SetScript("OnClick", function()
+        if sharedDropdownMenu then sharedDropdownMenu:Hide() end
+    end)
+
+    local menu = CreateFrame("Frame", "BFB_DropdownMenu", UIParent, BACKDROP_TEMPLATE)
+    menu:SetFrameStrata("FULLSCREEN_DIALOG")
+    menu:SetFrameLevel(99)
+    menu:SetClampedToScreen(true)
+    menu:SetBackdrop(INSET_BACKDROP)
+    menu:SetBackdropColor(0.08, 0.10, 0.13, 0.98)
+    menu:SetBackdropBorderColor(unpack(COLORS.goldBorder))
+    menu:EnableMouse(true)
+    menu:Hide()
+
+    menu:SetScript("OnShow", function()
+        sharedDropdownCatcher:Show()
+    end)
+    menu:SetScript("OnHide", function()
+        sharedDropdownCatcher:Hide()
+    end)
+
+    local scrollFrame = CreateFrame("ScrollFrame", "BFB_DropdownScrollFrame", menu, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", menu, "TOPLEFT", 4, -4)
+    scrollFrame:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT", -22, 4)
+    menu.scrollFrame = scrollFrame
+
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetSize(150, 100)
+    scrollFrame:SetScrollChild(scrollChild)
+    menu.scrollChild = scrollChild
+
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local cur = self:GetVerticalScroll()
+        local maxS = math.max(0, scrollChild:GetHeight() - self:GetHeight())
+        local newS = math.min(maxS, math.max(0, cur - (delta * 22)))
+        self:SetVerticalScroll(newS)
+    end)
+
+    menu.buttons = {}
+    sharedDropdownMenu = menu
+    return menu
+end
+
+local function NormalizeDropdownItems(items)
+    local list = {}
+    if type(items) == "table" then
+        if #items > 0 then
+            for _, item in ipairs(items) do
+                if type(item) == "table" then
+                    local val = (item.value ~= nil) and item.value or ((item.key ~= nil) and item.key or item[1])
+                    local text = item.text or item.label or item[2] or tostring(val)
+                    table.insert(list, { value = val, text = text })
+                else
+                    table.insert(list, { value = item, text = tostring(item) })
+                end
+            end
+        else
+            for k, v in pairs(items) do
+                table.insert(list, { value = k, text = tostring(v) })
+            end
+            table.sort(list, function(a, b) return a.text:lower() < b.text:lower() end)
+        end
+    end
+    return list
+end
+
+function UI:GetAvailableFonts()
+    local fonts = {}
+    local seen = {}
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if LSM and LSM.List then
+        local lsmList = LSM:List("font")
+        if lsmList then
+            for _, f in ipairs(lsmList) do
+                if not seen[f] then
+                    table.insert(fonts, { value = f, text = f })
+                    seen[f] = true
+                end
+            end
+        end
+    end
+    local standardFonts = {
+        "Nata Sans Regular", "Nata Sans Bold", "Nata Sans Medium",
+        "BleakUI Regular", "BleakUI Bold",
+        "Friz Quadrata TT", "Arial Narrow", "Skurri", "Morpheus"
+    }
+    for _, f in ipairs(standardFonts) do
+        if not seen[f] then
+            table.insert(fonts, { value = f, text = f })
+            seen[f] = true
+        end
+    end
+    table.sort(fonts, function(a, b) return a.text:lower() < b.text:lower() end)
+    return fonts
+end
+
+function UI:CreateDropdown(parent, name, labelText, items, x, y, width, getFunc, setFunc, tooltip, isFont)
+    width = width or 160
     local container = CreateFrame("Frame", name .. "Container", parent)
     container:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
     container:SetSize(width, 42)
@@ -257,74 +367,218 @@ function UI:CreateCycleButton(parent, name, labelText, options, x, y, width, get
     container.label = label
 
     local btn = CreateFrame("Button", name, container, BACKDROP_TEMPLATE)
-    btn:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -4)
+    btn:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -3)
     btn:SetSize(width, 22)
     btn:SetBackdrop(INSET_BACKDROP)
     btn:SetBackdropColor(unpack(COLORS.tabNormal))
     btn:SetBackdropBorderColor(unpack(COLORS.goldMuted))
+    container.button = btn
 
     local btnText = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    btnText:SetPoint("CENTER", btn, "CENTER", 0, 0)
+    btnText:SetPoint("LEFT", btn, "LEFT", 8, 0)
+    btnText:SetPoint("RIGHT", btn, "RIGHT", -20, 0)
+    btnText:SetJustifyH("LEFT")
+    btnText:SetWordWrap(false)
     btn.text = btnText
 
-    local function GetOptionLabel(val)
-        for _, opt in ipairs(options) do
-            if opt.value == val then
-                return opt.text
-            end
+    local arrow = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    arrow:SetPoint("RIGHT", btn, "RIGHT", -6, 0)
+    arrow:SetText("|cFFFFD100▼|r")
+
+    local function GetItemsList()
+        if type(items) == "function" then
+            return NormalizeDropdownItems(items())
         end
-        return tostring(val)
+        return NormalizeDropdownItems(items)
     end
 
-    local function UpdateText()
-        local cur = getFunc and getFunc()
-        btnText:SetText(GetOptionLabel(cur))
-    end
-    UpdateText()
-
-    btn:SetScript("OnClick", function()
-        local cur = getFunc and getFunc()
-        local nextVal = options[1] and options[1].value
-        for i, opt in ipairs(options) do
-            if opt.value == cur then
-                local nextIdx = (i % #options) + 1
-                nextVal = options[nextIdx].value
-                break
+    local function GetItemText(val)
+        local curItems = GetItemsList()
+        for _, itm in ipairs(curItems) do
+            if itm.value == val then
+                return itm.text
             end
         end
-        if setFunc then
-            setFunc(nextVal)
+        return tostring(val or "")
+    end
+
+    local function UpdateButtonText()
+        local curVal = getFunc and getFunc()
+        btnText:SetText(GetItemText(curVal))
+        if isFont then
+            local fontPath = BFB:FetchFont(curVal)
+            if fontPath then
+                pcall(function() btnText:SetFont(fontPath, 11, "") end)
+            end
         end
-        UpdateText()
-    end)
+    end
+    UpdateButtonText()
 
     btn:SetScript("OnEnter", function(self)
         self:SetBackdropColor(0.20, 0.22, 0.28, 0.95)
         self:SetBackdropBorderColor(unpack(COLORS.goldBorder))
-        btnText:SetTextColor(COLORS.goldText[1], COLORS.goldText[2], COLORS.goldText[3])
         if tooltip then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:ClearLines()
             GameTooltip:AddLine(labelText, COLORS.goldText[1], COLORS.goldText[2], COLORS.goldText[3])
-            GameTooltip:AddLine(tooltip .. "\n|cff888888Click to cycle through options.|r", 1, 1, 1, true)
+            GameTooltip:AddLine(tooltip, 1, 1, 1, true)
             GameTooltip:Show()
         end
     end)
-
     btn:SetScript("OnLeave", function(self)
         self:SetBackdropColor(unpack(COLORS.tabNormal))
         self:SetBackdropBorderColor(unpack(COLORS.goldMuted))
-        btnText:SetTextColor(COLORS.whiteText[1], COLORS.whiteText[2], COLORS.whiteText[3])
         if tooltip then GameTooltip:Hide() end
     end)
 
+    btn:SetScript("OnClick", function(self)
+        PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or 856)
+        local menu = GetOrCreateLocalDropdownMenu()
+        if menu:IsShown() and menu.currentButton == self then
+            menu:Hide()
+            return
+        end
+
+        local curItems = GetItemsList()
+        local curVal = getFunc and getFunc()
+        menu.currentButton = self
+
+        for _, b in ipairs(menu.buttons) do b:Hide() end
+
+        local btnHeight = 22
+        local maxVisible = 8
+        local visibleCount = math.min(#curItems, maxVisible)
+        local menuWidth = math.max(width, 160)
+        local totalContentHeight = #curItems * btnHeight
+
+        local hasScroll = (#curItems > maxVisible)
+        menu.scrollChild:SetSize(menuWidth - (hasScroll and 28 or 10), totalContentHeight)
+
+        local scrollBar = _G["BFB_DropdownScrollFrameScrollBar"]
+        if scrollBar then
+            if hasScroll then
+                scrollBar:Show()
+                menu.scrollFrame:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT", -22, 4)
+            else
+                scrollBar:Hide()
+                menu.scrollFrame:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT", -4, 4)
+            end
+        end
+
+        local selectedIndex = 1
+
+        for i, itm in ipairs(curItems) do
+            local b = menu.buttons[i]
+            if not b then
+                b = CreateFrame("Button", nil, menu.scrollChild, BACKDROP_TEMPLATE)
+                b:SetHeight(btnHeight)
+                b:SetBackdrop(INSET_BACKDROP)
+
+                b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                b.text:SetPoint("LEFT", b, "LEFT", 8, 0)
+                b.text:SetPoint("RIGHT", b, "RIGHT", -8, 0)
+                b.text:SetJustifyH("LEFT")
+
+                b:SetScript("OnEnter", function(s)
+                    s:SetBackdropColor(0.20, 0.22, 0.28, 0.95)
+                    s:SetBackdropBorderColor(unpack(COLORS.goldBorder))
+                end)
+                b:SetScript("OnLeave", function(s)
+                    if s.isActive then
+                        s:SetBackdropColor(0.22, 0.19, 0.12, 0.95)
+                        s:SetBackdropBorderColor(unpack(COLORS.goldBorder))
+                    else
+                        s:SetBackdropColor(0.10, 0.12, 0.15, 0.50)
+                        s:SetBackdropBorderColor(unpack(COLORS.goldMuted))
+                    end
+                end)
+                menu.buttons[i] = b
+            end
+
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", menu.scrollChild, "TOPLEFT", 2, -((i - 1) * btnHeight))
+            b:SetPoint("RIGHT", menu.scrollChild, "RIGHT", -2, 0)
+
+            local isActive = (itm.value == curVal)
+            b.isActive = isActive
+            if isActive then
+                selectedIndex = i
+                b.text:SetText("|cFFFFD100✔ |r" .. itm.text)
+                b:SetBackdropColor(0.22, 0.19, 0.12, 0.95)
+                b:SetBackdropBorderColor(unpack(COLORS.goldBorder))
+            else
+                b.text:SetText("   " .. itm.text)
+                b:SetBackdropColor(0.10, 0.12, 0.15, 0.50)
+                b:SetBackdropBorderColor(unpack(COLORS.goldMuted))
+            end
+
+            if isFont then
+                local fPath = BFB:FetchFont(itm.value)
+                if fPath then
+                    pcall(function() b.text:SetFont(fPath, 11, "") end)
+                end
+            else
+                b.text:SetFontObject("GameFontHighlightSmall")
+            end
+
+            local chosenValue = itm.value
+            b:SetScript("OnClick", function()
+                PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or 856)
+                if setFunc then
+                    setFunc(chosenValue)
+                end
+                UpdateButtonText()
+                menu:Hide()
+            end)
+            b:Show()
+        end
+
+        local menuHeight = (visibleCount * btnHeight) + 8
+        menu:SetSize(menuWidth, menuHeight)
+
+        local screenHeight = UIParent:GetHeight() or 768
+        local btnBottom = self:GetBottom() or (screenHeight / 2)
+        menu:ClearAllPoints()
+        if btnBottom < (menuHeight + 20) then
+            menu:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 0, 2)
+        else
+            menu:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -2)
+        end
+
+        menu:Show()
+        menu:Raise()
+
+        if hasScroll then
+            local scrollPos = math.max(0, math.min(totalContentHeight - (visibleCount * btnHeight), (selectedIndex - 1) * btnHeight))
+            menu.scrollFrame:SetVerticalScroll(scrollPos)
+        else
+            menu.scrollFrame:SetVerticalScroll(0)
+        end
+    end)
+
+    container.Sync = UpdateButtonText
+    container.SetValue = function(self, val)
+        if setFunc then setFunc(val) end
+        UpdateButtonText()
+    end
+    container.GetValue = function() return getFunc and getFunc() end
+
     table.insert(registeredWidgets, {
-        type = "cycle",
-        frame = btn,
-        update = UpdateText,
+        type = "dropdown",
+        frame = container,
+        update = UpdateButtonText,
     })
 
     return container
+end
+
+function UI:CreateFontDropdown(parent, name, labelText, x, y, width, getFunc, setFunc, tooltip)
+    return self:CreateDropdown(parent, name, labelText, function() return self:GetAvailableFonts() end, x, y, width, getFunc, setFunc, tooltip, true)
+end
+
+-- Backward compatibility alias
+function UI:CreateCycleButton(parent, name, labelText, options, x, y, width, getFunc, setFunc, tooltip)
+    return self:CreateDropdown(parent, name, labelText, options, x, y, width, getFunc, setFunc, tooltip)
 end
 
 --[[-----------------------------------------------------------------------------
@@ -521,7 +775,7 @@ function UI:BuildOptions(parentContainer, isMasterHub)
         "Padding space between adjacent item slots."
     )
 
-    local cycViewMode = self:CreateCycleButton(pGeneral, "BFB_CycViewMode", "Bag Display Mode", {
+    local ddViewMode = self:CreateDropdown(pGeneral, "BFB_DdViewMode", "Bag Display Mode", {
         { value = "grid", text = "Classic Grid" },
         { value = "category", text = "Categorized" },
     }, 16, 0, 180,
@@ -531,6 +785,59 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             if BFB.BagFrame and BFB.BagFrame.UpdateLayout then BFB.BagFrame:UpdateLayout() end
         end,
         "Switch between standard flat grid layout and smart categorized sections."
+    )
+
+    local hTypography = self:CreateSectionHeader(pGeneral, "Typography & Fonts", 16, 0)
+
+    local ddFont = self:CreateFontDropdown(pGeneral, "BFB_DdFont", "Body & Text Font", 16, 0, 180,
+        function() return db.font or BFB.DEFAULT_FONT_NAME end,
+        function(v)
+            db.font = v
+            BFB:UpdateFonts()
+        end,
+        "Select the typography used for slot stack counts, search, and footer info."
+    )
+
+    local ddHeaderFont = self:CreateFontDropdown(pGeneral, "BFB_DdHeaderFont", "Header Font", 16, 0, 180,
+        function() return db.headerFont or BFB.DEFAULT_HEADER_FONT_NAME end,
+        function(v)
+            db.headerFont = v
+            BFB:UpdateFonts()
+        end,
+        "Select the typography used for frame titles and category headers."
+    )
+
+    local ddOutline = self:CreateDropdown(pGeneral, "BFB_DdOutline", "Font Outline", {
+        { value = "OUTLINE", text = "Outline" },
+        { value = "THICKOUTLINE", text = "Thick Outline" },
+        { value = "None", text = "None" },
+    }, 16, 0, 180,
+        function() return db.fontOutline or "OUTLINE" end,
+        function(v)
+            db.fontOutline = v
+            BFB:UpdateFonts()
+        end,
+        "Outline thickness applied to text elements."
+    )
+
+    local slHeaderSize = self:CreateSlider(pGeneral, "BFB_SlHeaderSize", "Header Font Size", 8, 20, 1, 16, 0,
+        function() return db.headerFontSize or 12 end,
+        function(v)
+            db.headerFontSize = v
+            BFB:UpdateFonts()
+        end,
+        "%d pt",
+        "Font size for window title and category headers."
+    )
+
+    local slCountSize = self:CreateSlider(pGeneral, "BFB_SlCountSize", "Stack & Detail Font Size", 7, 16, 1, 16, 0,
+        function() return db.countFontSize or 9 end,
+        function(v)
+            db.countFontSize = v
+            BFB:UpdateFonts()
+        end,
+        "%d pt",
+        "Font size for slot stack counts and footer details."
     )
 
     local hAutoOpen = self:CreateSectionHeader(pGeneral, "Automatic Bag Interaction", 16, 0)
@@ -603,8 +910,8 @@ function UI:BuildOptions(parentContainer, isMasterHub)
 
             slBtnSpacing:ClearAllPoints()
             slBtnSpacing:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
-            cycViewMode:ClearAllPoints()
-            cycViewMode:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col2X, y + 6)
+            ddViewMode:ClearAllPoints()
+            ddViewMode:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col2X, y + 6)
             y = y - 56
         else
             slBagCols:ClearAllPoints()
@@ -616,8 +923,46 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             slBtnSpacing:ClearAllPoints()
             slBtnSpacing:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
             y = y - 48
-            cycViewMode:ClearAllPoints()
-            cycViewMode:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
+            ddViewMode:ClearAllPoints()
+            ddViewMode:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
+            y = y - 52
+        end
+
+        hTypography:ClearAllPoints()
+        hTypography:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
+        y = y - 28
+
+        if isWide then
+            ddFont:ClearAllPoints()
+            ddFont:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
+            ddHeaderFont:ClearAllPoints()
+            ddHeaderFont:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col2X, y)
+            y = y - 48
+
+            ddOutline:ClearAllPoints()
+            ddOutline:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
+            slHeaderSize:ClearAllPoints()
+            slHeaderSize:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col2X, y - 6)
+            y = y - 48
+
+            slCountSize:ClearAllPoints()
+            slCountSize:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
+            y = y - 56
+        else
+            ddFont:ClearAllPoints()
+            ddFont:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
+            y = y - 48
+            ddHeaderFont:ClearAllPoints()
+            ddHeaderFont:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
+            y = y - 48
+            ddOutline:ClearAllPoints()
+            ddOutline:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
+            y = y - 48
+            slHeaderSize:ClearAllPoints()
+            slHeaderSize:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
+            y = y - 48
+            slCountSize:ClearAllPoints()
+            slCountSize:SetPoint("TOPLEFT", pGeneral, "TOPLEFT", col1X, y)
             y = y - 52
         end
 
@@ -928,7 +1273,7 @@ function UI:BuildOptions(parentContainer, isMasterHub)
         "Number of slot columns in the bank window."
     )
 
-    local cycBankViewMode = self:CreateCycleButton(pBank, "BFB_CycBankViewMode", "Bank Display Mode", {
+    local ddBankViewMode = self:CreateDropdown(pBank, "BFB_DdBankViewMode", "Bank Display Mode", {
         { value = "grid", text = "Classic Grid" },
         { value = "category", text = "Categorized" },
     }, 16, 0, 180,
@@ -985,8 +1330,8 @@ function UI:BuildOptions(parentContainer, isMasterHub)
         if isWide then
             slBankCols:ClearAllPoints()
             slBankCols:SetPoint("TOPLEFT", pBank, "TOPLEFT", col1X, y)
-            cycBankViewMode:ClearAllPoints()
-            cycBankViewMode:SetPoint("TOPLEFT", pBank, "TOPLEFT", col2X, y + 6)
+            ddBankViewMode:ClearAllPoints()
+            ddBankViewMode:SetPoint("TOPLEFT", pBank, "TOPLEFT", col2X, y + 6)
             y = y - 54
 
             cbBankBagBar:ClearAllPoints()
@@ -997,8 +1342,8 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             slBankCols:ClearAllPoints()
             slBankCols:SetPoint("TOPLEFT", pBank, "TOPLEFT", col1X, y)
             y = y - 48
-            cycBankViewMode:ClearAllPoints()
-            cycBankViewMode:SetPoint("TOPLEFT", pBank, "TOPLEFT", col1X, y)
+            ddBankViewMode:ClearAllPoints()
+            ddBankViewMode:SetPoint("TOPLEFT", pBank, "TOPLEFT", col1X, y)
             y = y - 52
             cbBankBagBar:ClearAllPoints()
             cbBankBagBar:SetPoint("TOPLEFT", pBank, "TOPLEFT", col1X, y)
@@ -1192,7 +1537,7 @@ function UI:BuildOptions(parentContainer, isMasterHub)
         end
     end)
 
-    local cycProfileSelect
+    local ddProfileSelect
     local function GetProfileCycleOptions()
         local list = (BFB.dbObject and BFB.dbObject.GetProfiles and BFB.dbObject:GetProfiles()) or { "Default" }
         local opts = {}
@@ -1202,7 +1547,7 @@ function UI:BuildOptions(parentContainer, isMasterHub)
         return opts
     end
 
-    cycProfileSelect = self:CreateCycleButton(pProf, "BFB_CycProfiles", "Switch Profile", GetProfileCycleOptions(), 16, 0, 180,
+    ddProfileSelect = self:CreateDropdown(pProf, "BFB_DdProfiles", "Select Profile", GetProfileCycleOptions, 16, 0, 180,
         function()
             return (BFB.dbObject and BFB.dbObject.GetCurrentProfile and BFB.dbObject:GetCurrentProfile()) or "Default"
         end,
@@ -1216,7 +1561,7 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             UI:Refresh()
             print(string.format("|cff00c0ffBleakfiber's Bags:|r Switched active profile to '|cffffd100%s|r'.", selectedKey))
         end,
-        "Cycle through existing profiles."
+        "Select an existing configuration profile."
     )
 
     local btnResetProfile = self:CreateButton(pProf, "BFB_BtnResetProf", "Reset to Defaults", 16, 0, 130, 22, function()
@@ -1265,8 +1610,8 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             btnCreateProfile:ClearAllPoints()
             btnCreateProfile:SetPoint("TOPLEFT", pProf, "TOPLEFT", col1X + 190, y - 18)
             
-            cycProfileSelect:ClearAllPoints()
-            cycProfileSelect:SetPoint("TOPLEFT", pProf, "TOPLEFT", col2X, y)
+            ddProfileSelect:ClearAllPoints()
+            ddProfileSelect:SetPoint("TOPLEFT", pProf, "TOPLEFT", col2X, y)
             btnResetProfile:ClearAllPoints()
             btnResetProfile:SetPoint("TOPLEFT", pProf, "TOPLEFT", col2X, y - 50)
             y = y - 88
@@ -1277,8 +1622,8 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             btnCreateProfile:ClearAllPoints()
             btnCreateProfile:SetPoint("TOPLEFT", pProf, "TOPLEFT", col1X, y)
             y = y - 36
-            cycProfileSelect:ClearAllPoints()
-            cycProfileSelect:SetPoint("TOPLEFT", pProf, "TOPLEFT", col1X, y)
+            ddProfileSelect:ClearAllPoints()
+            ddProfileSelect:SetPoint("TOPLEFT", pProf, "TOPLEFT", col1X, y)
             y = y - 52
             btnResetProfile:ClearAllPoints()
             btnResetProfile:SetPoint("TOPLEFT", pProf, "TOPLEFT", col1X, y)
