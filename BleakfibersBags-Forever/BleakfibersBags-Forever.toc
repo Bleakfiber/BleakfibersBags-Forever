@@ -2,7 +2,7 @@
 ## Title: |cff00c0ffBleakfiber's Bags|r - |cffffd100Forever|r
 ## Notes: A high-performance, modular all-in-one inventory and container management suite for World of Warcraft Forever.
 ## Author: Bleakfiber
-## Version: 1.5.1
+## Version: 1.5.2
 ## SavedVariables: BleakfibersBagsDB
 ## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibSharedMedia-3.0, BleakfibersAddonConfigForever
 ## X-License: Restricted - Source Available (All Rights Reserved, No Derivatives)

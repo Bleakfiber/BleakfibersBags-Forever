@@ -329,6 +329,35 @@ function ItemButtons:Acquire(parent)
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         button:RegisterForDrag("LeftButton")
         
+        -- Suppress Blizzard template default glowing overlays, Battlepay highlights, and animations
+        button.UpdateNewItem = function() end
+        if button.NewItemTexture then
+            button.NewItemTexture:Hide()
+            button.NewItemTexture:SetAlpha(0)
+        end
+        if button.newitemglowAnim then
+            button.newitemglowAnim:Stop()
+        end
+        if button.flashAnim then
+            button.flashAnim:Stop()
+        end
+        if button.flash then
+            button.flash:Hide()
+            button.flash:SetAlpha(0)
+        end
+        if button.BattlepayItemTexture then
+            button.BattlepayItemTexture:Hide()
+        end
+        if button.UpgradeIcon then
+            button.UpgradeIcon:Hide()
+        end
+        if button.ExtendedSlot then
+            button.ExtendedSlot:Hide()
+        end
+        if button.BagIndicator then
+            button.BagIndicator:Hide()
+        end
+        
         -- Ensure icon texture is properly bound and anchored
         if not button.icon then
             button.icon = _G[btnName .. "IconTexture"] or button:CreateTexture(nil, "BORDER")
@@ -548,6 +577,26 @@ local function ResetPooledButton(btn)
     btn._bfbItemLink = nil
     btn.itemName = nil
     btn.itemQuality = nil
+    if btn.NewItemTexture then
+        btn.NewItemTexture:Hide()
+        btn.NewItemTexture:SetAlpha(0)
+    end
+    if btn.newitemglowAnim then
+        btn.newitemglowAnim:Stop()
+    end
+    if btn.flashAnim then
+        btn.flashAnim:Stop()
+    end
+    if btn.flash then
+        btn.flash:Hide()
+        btn.flash:SetAlpha(0)
+    end
+    if btn.BattlepayItemTexture then
+        btn.BattlepayItemTexture:Hide()
+    end
+    if btn.UpgradeIcon then btn.UpgradeIcon:Hide() end
+    if btn.ExtendedSlot then btn.ExtendedSlot:Hide() end
+    if btn.BagIndicator then btn.BagIndicator:Hide() end
     if btn.QualityBorder then btn.QualityBorder:Hide() end
     if btn.SpecialtyBorder then btn.SpecialtyBorder:Hide() end
     if btn.UnusableOverlay then btn.UnusableOverlay:Hide() end
@@ -593,6 +642,14 @@ function ItemButtons:UpdateButton(button, bagID, slotID, searchTerm)
         if button.QuestIcon then button.QuestIcon:Hide() end
         if button.RecentGlow then button.RecentGlow:Hide() end
         if button.UnusableOverlay then button.UnusableOverlay:Hide() end
+        if button.NewItemTexture then button.NewItemTexture:Hide(); button.NewItemTexture:SetAlpha(0) end
+        if button.newitemglowAnim then button.newitemglowAnim:Stop() end
+        if button.flashAnim then button.flashAnim:Stop() end
+        if button.flash then button.flash:Hide(); button.flash:SetAlpha(0) end
+        if button.BattlepayItemTexture then button.BattlepayItemTexture:Hide() end
+        if button.UpgradeIcon then button.UpgradeIcon:Hide() end
+        if button.ExtendedSlot then button.ExtendedSlot:Hide() end
+        if button.BagIndicator then button.BagIndicator:Hide() end
         button.icon:SetVertexColor(1.0, 1.0, 1.0)
         button.itemID = nil
         button.itemLink = nil
@@ -614,6 +671,15 @@ function ItemButtons:UpdateButton(button, bagID, slotID, searchTerm)
     end
 
     -- Has Item
+    if button.NewItemTexture then button.NewItemTexture:Hide(); button.NewItemTexture:SetAlpha(0) end
+    if button.newitemglowAnim then button.newitemglowAnim:Stop() end
+    if button.flashAnim then button.flashAnim:Stop() end
+    if button.flash then button.flash:Hide(); button.flash:SetAlpha(0) end
+    if button.BattlepayItemTexture then button.BattlepayItemTexture:Hide() end
+    if button.UpgradeIcon then button.UpgradeIcon:Hide() end
+    if button.ExtendedSlot then button.ExtendedSlot:Hide() end
+    if button.BagIndicator then button.BagIndicator:Hide() end
+
     button.icon:Show()
     button.icon:SetTexture(icon)
 

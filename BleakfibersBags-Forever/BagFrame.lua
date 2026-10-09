@@ -485,6 +485,12 @@ function BagFrame:Init()
     -- Apply Saved Coordinates
     self:LoadPosition()
 
+    mainFrame:HookScript("OnShow", function()
+        if BFB.ClearNewItems then
+            BFB:ClearNewItems()
+        end
+    end)
+
     -- Initial Update
     self:UpdateBagSlotBar()
     self:UpdateLayout()
@@ -633,6 +639,10 @@ function BagFrame:UpdateLayout()
             mainFrame.bagContainers[bagID] = c
         end
         return c
+    end
+
+    if BFB.ClearNewItems then
+        BFB:ClearNewItems()
     end
 
     local totalSlots = 0

@@ -1,7 +1,7 @@
 local addonName, BFB = ...
 
 BFB.addonName = addonName
-BFB.version = "1.5.1"
+BFB.version = "1.5.2"
 
 -- Safe API wrapper for item info
 function BFB:GetItemData(item)

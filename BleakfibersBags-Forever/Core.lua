@@ -82,12 +82,38 @@ function BFB:OnEnable()
     SafeRegisterEvent(self, "TRADE_SHOW", "OnTradeShow")
     SafeRegisterEvent(self, "TRADE_CLOSED", "OnTradeClosed")
     SafeRegisterEvent(self, "CHAT_MSG_LOOT", "OnChatMsgLoot")
+    SafeRegisterEvent(self, "BAG_NEW_ITEMS_UPDATED", "OnBagNewItemsUpdated")
+    SafeRegisterEvent(self, "PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
 
     -- Hook Default Blizzard Bag Functions
     self:HookBlizzardBagFrames()
 end
 
+-- Engine New Item Clear Utility (Ensures client engine does not keep all slots flagged as new)
+function BFB:ClearNewItems()
+    if C_NewItems then
+        if C_NewItems.ClearAll then
+            pcall(C_NewItems.ClearAll)
+        elseif C_NewItems.RemoveNewItem then
+            for bagID = 0, 4 do
+                local numSlots = BFB.GetNumSlots and BFB.GetNumSlots(bagID) or 0
+                for slotID = 1, numSlots do
+                    pcall(C_NewItems.RemoveNewItem, bagID, slotID)
+                end
+            end
+        end
+    end
+end
+
 -- Event Callbacks
+function BFB:OnBagNewItemsUpdated(event)
+    self:ClearNewItems()
+end
+
+function BFB:OnPlayerEnteringWorld(event)
+    self:ClearNewItems()
+end
+
 function BFB:OnChatMsgLoot(event, msg)
     if not msg then return end
     local itemID = msg:match("|Hitem:(%d+)")

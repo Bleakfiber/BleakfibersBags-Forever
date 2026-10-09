@@ -577,6 +577,10 @@ function BankFrame:UpdateLayout()
         return c
     end
 
+    if BFB.ClearNewItems then
+        BFB:ClearNewItems()
+    end
+
     local totalSlots = 0
     local freeSlots = 0
     local slotList = {}

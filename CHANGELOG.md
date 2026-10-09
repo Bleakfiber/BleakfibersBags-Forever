@@ -1,5 +1,11 @@
 # Changelog - Bleakfiber's Bags (Forever)
 
+## [1.5.2] - 2026-10-09
+
+### Fixed
+- **Suppress Persistent Template Glow & Overlays (`ItemButton.lua`)**: Neutralized default Blizzard button template animations (`newitemglowAnim`, `flashAnim`) and hidden overlays (`NewItemTexture`, `BattlepayItemTexture`, `flash`) on button initialization, pooling, and rendering, resolving the issue where slots and empty spaces were marked with a glowing border on reload or relog.
+- **Engine New Item State Synchronization (`Core.lua`, `BagFrame.lua`, `BankFrame.lua`)**: Added `BFB:ClearNewItems()` to synchronize and clear `C_NewItems` on bag open, world load, and layout updates so engine session flags do not persist erroneously.
+
 ## [1.5.1] - 2026-10-09
 
 ### Fixed
