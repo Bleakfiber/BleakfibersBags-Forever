@@ -90,7 +90,7 @@ end
 
 -- Determine an item's category based on link, itemID, quality and user overrides
 function CategoryEngine:ClassifyItem(bagID, slotID, itemInfo)
-    if not itemInfo or not itemInfo.iconFileID then
+    if not itemInfo or not (itemInfo.iconFileID or itemInfo.icon or itemInfo.texture) then
         return "empty"
     end
 

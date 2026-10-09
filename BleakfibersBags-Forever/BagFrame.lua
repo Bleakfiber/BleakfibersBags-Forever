@@ -388,6 +388,8 @@ function BagFrame:Init()
     -- Item Grid Container
     local gridContainer = CreateFrame("Frame", nil, mainFrame)
     gridContainer:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 10, -38)
+    gridContainer:SetFrameStrata(mainFrame:GetFrameStrata() or "HIGH")
+    gridContainer:SetFrameLevel(mainFrame:GetFrameLevel() + 1)
     mainFrame.GridContainer = gridContainer
 
     -- Footer Bar
@@ -484,6 +486,7 @@ function BagFrame:Init()
     self:LoadPosition()
 
     -- Initial Update
+    self:UpdateBagSlotBar()
     self:UpdateLayout()
     self:UpdateMoney()
 
@@ -561,6 +564,7 @@ function BagFrame:UpdateBagSlotBar()
     local db = BFB.db or {}
     if not mainFrame or not mainFrame.BagSlotBar then return end
 
+    mainFrame.GridContainer:ClearAllPoints()
     if db.showBagSlotBar then
         mainFrame.BagSlotBar:Show()
         mainFrame.GridContainer:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 10, -74)
@@ -623,7 +627,7 @@ function BagFrame:UpdateLayout()
             totalSlots = totalSlots + numSlots
             for slotID = 1, numSlots do
                 local info = BFB.GetItemInfo(bagID, slotID)
-                if not info or not info.iconFileID then
+                if not info or not (info.iconFileID or info.icon or info.texture) then
                     freeSlots = freeSlots + 1
                 end
                 table.insert(slotList, { bag = bagID, slot = slotID })
@@ -642,6 +646,7 @@ function BagFrame:UpdateLayout()
 
         for idx, slotData in ipairs(slotList) do
             local btn = BFB.ItemButtons:Acquire(mainFrame.GridContainer)
+            btn:ClearAllPoints()
             btn:SetSize(btnSize, btnSize)
 
             local row = math.floor((idx - 1) / cols)
@@ -690,6 +695,7 @@ function BagFrame:UpdateLayout()
 
                 for idx, slotData in ipairs(catGroup.slots) do
                     local btn = BFB.ItemButtons:Acquire(mainFrame.GridContainer)
+                    btn:ClearAllPoints()
                     btn:SetSize(btnSize, btnSize)
 
                     local row = math.floor((idx - 1) / cols)
@@ -719,6 +725,10 @@ function BagFrame:UpdateLayout()
     local headerH = 34 + (db.showBagSlotBar and 36 or 0)
     local footerH = 30
     local totalH = totalContentH + headerH + footerH
+
+    if mainFrame.GridContainer then
+        mainFrame.GridContainer:SetSize(gridW, math.max(totalContentH, 37))
+    end
 
     mainFrame:SetSize(math.max(totalW, 260), math.max(totalH, 120))
 

@@ -370,6 +370,8 @@ function BankFrame:Init()
     -- Bank Grid Container
     local gridContainer = CreateFrame("Frame", nil, bankFrame)
     gridContainer:SetPoint("TOPLEFT", bankFrame, "TOPLEFT", 10, -38)
+    gridContainer:SetFrameStrata(bankFrame:GetFrameStrata() or "HIGH")
+    gridContainer:SetFrameLevel(bankFrame:GetFrameLevel() + 1)
     bankFrame.GridContainer = gridContainer
 
     -- Footer Bar
@@ -427,6 +429,7 @@ function BankFrame:Init()
     end)
 
     self:LoadPosition()
+    self:UpdateBankBagSlotBar()
     self:UpdateLayout()
 
     bankFrame:Hide()
@@ -502,6 +505,7 @@ function BankFrame:UpdateBankBagSlotBar()
     local db = BFB.db or {}
     if not bankFrame or not bankFrame.BagSlotBar then return end
 
+    bankFrame.GridContainer:ClearAllPoints()
     if db.showBankBagSlotBar then
         bankFrame.BagSlotBar:Show()
         bankFrame.GridContainer:SetPoint("TOPLEFT", bankFrame, "TOPLEFT", 10, -74)
@@ -564,7 +568,7 @@ function BankFrame:UpdateLayout()
         totalSlots = totalSlots + mainSlots
         for slot = 1, mainSlots do
             local info = BFB.GetItemInfo(-1, slot)
-            if not info or not info.iconFileID then
+            if not info or not (info.iconFileID or info.icon or info.texture) then
                 freeSlots = freeSlots + 1
             end
             table.insert(slotList, { bag = -1, slot = slot })
@@ -580,7 +584,7 @@ function BankFrame:UpdateLayout()
             totalSlots = totalSlots + bagSlots
             for slot = 1, bagSlots do
                 local info = BFB.GetItemInfo(bagID, slot)
-                if not info or not info.iconFileID then
+                if not info or not (info.iconFileID or info.icon or info.texture) then
                     freeSlots = freeSlots + 1
                 end
                 table.insert(slotList, { bag = bagID, slot = slot })
@@ -598,6 +602,7 @@ function BankFrame:UpdateLayout()
 
         for idx, slotData in ipairs(slotList) do
             local btn = BFB.ItemButtons:Acquire(bankFrame.GridContainer)
+            btn:ClearAllPoints()
             btn:SetSize(btnSize, btnSize)
 
             local row = math.floor((idx - 1) / cols)
@@ -645,6 +650,7 @@ function BankFrame:UpdateLayout()
 
                 for idx, slotData in ipairs(catGroup.slots) do
                     local btn = BFB.ItemButtons:Acquire(bankFrame.GridContainer)
+                    btn:ClearAllPoints()
                     btn:SetSize(btnSize, btnSize)
 
                     local row = math.floor((idx - 1) / cols)
@@ -673,6 +679,10 @@ function BankFrame:UpdateLayout()
     local headerH = 34 + (db.showBankBagSlotBar and 36 or 0)
     local footerH = 30
     local totalH = totalContentH + headerH + footerH
+
+    if bankFrame.GridContainer then
+        bankFrame.GridContainer:SetSize(gridW, math.max(totalContentH, 37))
+    end
 
     bankFrame:SetSize(math.max(totalW, 300), math.max(totalH, 140))
 

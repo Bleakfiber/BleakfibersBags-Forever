@@ -23,24 +23,54 @@ end
 
 local function GetContainerItemInfoCompat(bagID, slotID)
     if not bagID or not slotID then return nil end
+    local info
     if C_Container and C_Container.GetContainerItemInfo then
-        return C_Container.GetContainerItemInfo(bagID, slotID)
+        info = C_Container.GetContainerItemInfo(bagID, slotID)
     elseif GetContainerItemInfo then
         local texture, count, locked, quality, readable, lootable, link, isFiltered, noValue, itemID = GetContainerItemInfo(bagID, slotID)
         if texture then
-            return {
+            info = {
                 iconFileID = texture,
+                texture = texture,
+                icon = texture,
                 stackCount = count or 1,
+                count = count or 1,
                 isLocked = locked,
                 quality = quality,
                 isReadable = readable,
                 hasLoot = lootable,
                 hyperlink = link,
+                link = link,
                 isFiltered = isFiltered,
                 hasNoValue = noValue,
                 itemID = itemID,
             }
         end
+    end
+
+    if info then
+        local icon = info.iconFileID or info.icon or info.texture
+        if icon then
+            info.iconFileID = icon
+            info.icon = icon
+            info.texture = icon
+        end
+        local cnt = info.stackCount or info.count
+        if cnt then
+            info.stackCount = cnt
+            info.count = cnt
+        end
+        local l = info.hyperlink or info.link
+        if l then
+            info.hyperlink = l
+            info.link = l
+        end
+        local id = info.itemID or info.id
+        if id then
+            info.itemID = id
+            info.id = id
+        end
+        return info
     end
     return nil
 end
@@ -284,27 +314,73 @@ function ItemButtons:Acquire(parent)
     if not button then
         buttonCounter = buttonCounter + 1
         local btnName = "BleakfibersBagItemBtn" .. buttonCounter
-        button = CreateFrame("Button", btnName, parent, "ContainerFrameItemButtonTemplate")
         
-        -- Fallback elements if template is incomplete
+        -- Safely instantiate item button with fallback templates
+        local ok
+        if pcall(function() button = CreateFrame("Button", btnName, parent, "ContainerFrameItemButtonTemplate") end) and button then
+            ok = true
+        elseif pcall(function() button = CreateFrame("Button", btnName, parent, "ItemButtonTemplate") end) and button then
+            ok = true
+        else
+            button = CreateFrame("Button", btnName, parent)
+        end
+
+        button:ClearAllPoints()
+        button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        button:RegisterForDrag("LeftButton")
+        
+        -- Ensure icon texture is properly bound and anchored
         if not button.icon then
             button.icon = _G[btnName .. "IconTexture"] or button:CreateTexture(nil, "BORDER")
-            button.icon:SetAllPoints()
         end
+        button.icon:ClearAllPoints()
+        button.icon:SetAllPoints(button)
+        if button.icon.SetTexCoord then
+            button.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        end
+
+        -- Ensure stack count FontString
         if not button.Count then
             button.Count = _G[btnName .. "Count"] or button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-            button.Count:SetPoint("BOTTOMRIGHT", -2, 2)
         end
+        button.Count:ClearAllPoints()
+        button.Count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
+
         local db = BFB.db or {}
         local fFamily = BFB:FetchFont(db.font or BFB.DEFAULT_FONT_NAME)
         local outline = db.fontOutline or "OUTLINE"
         if outline == "None" or outline == "NONE" then outline = "" end
         local cSize = db.countFontSize or 9
         button.Count:SetFont(fFamily, cSize, outline)
+
+        -- Cooldown Frame
         if not button.Cooldown then
             button.Cooldown = _G[btnName .. "Cooldown"] or CreateFrame("Cooldown", btnName .. "Cooldown", button, "CooldownFrameTemplate")
-            button.Cooldown:SetAllPoints()
         end
+        button.Cooldown:ClearAllPoints()
+        button.Cooldown:SetAllPoints(button)
+
+        -- Dark Empty Slot Background and Slate Border
+        local slotBg = button:CreateTexture(nil, "BACKGROUND", nil, -2)
+        slotBg:ClearAllPoints()
+        slotBg:SetAllPoints(button)
+        slotBg:SetColorTexture(0.05, 0.06, 0.08, 0.85)
+        button.SlotBg = slotBg
+
+        local slotBorder = button:CreateTexture(nil, "BACKGROUND", nil, -1)
+        slotBorder:ClearAllPoints()
+        slotBorder:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 0)
+        slotBorder:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
+        slotBorder:SetTexture("Interface\\Buttons\\WHITE8x8")
+        slotBorder:SetColorTexture(0.18, 0.22, 0.28, 0.70)
+        button.SlotBorder = slotBorder
+
+        local slotInner = button:CreateTexture(nil, "BACKGROUND", nil, 0)
+        slotInner:ClearAllPoints()
+        slotInner:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
+        slotInner:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+        slotInner:SetColorTexture(0.06, 0.07, 0.10, 0.92)
+        button.SlotInner = slotInner
 
         -- Quality Border Overlay (Signature Crisp Border)
         local qualityBorder = button:CreateTexture(nil, "OVERLAY", nil, 1)
@@ -356,18 +432,75 @@ function ItemButtons:Acquire(parent)
         questIcon:Hide()
         button.QuestIcon = questIcon
 
-        -- Dark Empty Slot Background
-        local slotBg = button:CreateTexture(nil, "BACKGROUND")
-        slotBg:SetAllPoints()
-        slotBg:SetColorTexture(0.04, 0.04, 0.06, 0.65)
-        button.SlotBg = slotBg
+        -- Fallback tooltip and hover handlers if not provided by template
+        if not button:GetScript("OnEnter") then
+            button:SetScript("OnEnter", function(self)
+                if self.bagID and self.slotID then
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    if C_Container and C_Container.UseContainerItem then
+                        GameTooltip:SetBagItem(self.bagID, self.slotID)
+                    elseif GameTooltip.SetBagItem then
+                        GameTooltip:SetBagItem(self.bagID, self.slotID)
+                    elseif self.itemLink then
+                        GameTooltip:SetHyperlink(self.itemLink)
+                    end
+                    GameTooltip:Show()
+                end
+            end)
+            button:SetScript("OnLeave", function()
+                GameTooltip:Hide()
+            end)
+        end
 
-        -- Alt + Right Click Handler for Custom Category Assignment
-        button:HookScript("OnClick", function(self, mouseBtn)
-            if mouseBtn == "RightButton" and IsAltKeyDown() and self.itemID then
-                BFB:ShowCategoryContextMenu(self, self.itemID, self.itemLink)
-            end
-        end)
+        -- Fallback click and drag handlers if template does not implement them
+        if not button:GetScript("OnClick") then
+            button:SetScript("OnClick", function(self, mouseBtn)
+                if mouseBtn == "RightButton" and IsAltKeyDown() and self.itemID then
+                    BFB:ShowCategoryContextMenu(self, self.itemID, self.itemLink)
+                    return
+                end
+                if not self.bagID or not self.slotID then return end
+                if mouseBtn == "LeftButton" then
+                    if C_Container and C_Container.PickupContainerItem then
+                        C_Container.PickupContainerItem(self.bagID, self.slotID)
+                    elseif PickupContainerItem then
+                        PickupContainerItem(self.bagID, self.slotID)
+                    end
+                elseif mouseBtn == "RightButton" then
+                    if C_Container and C_Container.UseContainerItem then
+                        C_Container.UseContainerItem(self.bagID, self.slotID)
+                    elseif UseContainerItem then
+                        UseContainerItem(self.bagID, self.slotID)
+                    end
+                end
+            end)
+        else
+            -- Alt + Right Click Handler for Custom Category Assignment
+            button:HookScript("OnClick", function(self, mouseBtn)
+                if mouseBtn == "RightButton" and IsAltKeyDown() and self.itemID then
+                    BFB:ShowCategoryContextMenu(self, self.itemID, self.itemLink)
+                end
+            end)
+        end
+
+        if not button:GetScript("OnDragStart") then
+            button:SetScript("OnDragStart", function(self)
+                if not self.bagID or not self.slotID then return end
+                if C_Container and C_Container.PickupContainerItem then
+                    C_Container.PickupContainerItem(self.bagID, self.slotID)
+                elseif PickupContainerItem then
+                    PickupContainerItem(self.bagID, self.slotID)
+                end
+            end)
+            button:SetScript("OnReceiveDrag", function(self)
+                if not self.bagID or not self.slotID then return end
+                if C_Container and C_Container.PickupContainerItem then
+                    C_Container.PickupContainerItem(self.bagID, self.slotID)
+                elseif PickupContainerItem then
+                    PickupContainerItem(self.bagID, self.slotID)
+                end
+            end)
+        end
 
         -- Helper method to bind bag and slot
         function button:SetBagSlot(bagID, slotID)
@@ -378,6 +511,13 @@ function ItemButtons:Acquire(parent)
     end
 
     button:SetParent(parent)
+    button:ClearAllPoints()
+    if parent and parent.GetFrameStrata then
+        button:SetFrameStrata(parent:GetFrameStrata())
+    end
+    if parent and parent.GetFrameLevel then
+        button:SetFrameLevel(parent:GetFrameLevel() + 2)
+    end
     button:Show()
     table.insert(activeButtons, button)
     return button
@@ -413,7 +553,8 @@ function ItemButtons:UpdateButton(button, bagID, slotID, searchTerm)
     local db = BFB.db or {}
     
     local info = GetContainerItemInfoCompat(bagID, slotID)
-    if not info or not info.iconFileID then
+    local icon = info and (info.iconFileID or info.icon or info.texture)
+    if not info or not icon then
         -- Empty Slot
         button.icon:Hide()
         button.Count:Hide()
@@ -445,7 +586,7 @@ function ItemButtons:UpdateButton(button, bagID, slotID, searchTerm)
 
     -- Has Item
     button.icon:Show()
-    button.icon:SetTexture(info.iconFileID)
+    button.icon:SetTexture(icon)
 
     -- Stack Count
     local count = info.stackCount or 1
