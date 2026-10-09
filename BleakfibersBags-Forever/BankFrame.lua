@@ -38,7 +38,7 @@ local function AcquireBankCategoryHeader(parent, categoryID, titleText, count, c
         if not header.SetBackdrop and BackdropTemplateMixin then
             Mixin(header, BackdropTemplateMixin)
         end
-        header:SetHeight(20)
+        header:SetHeight(18)
         header:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8x8",
             edgeFile = "Interface\\Buttons\\WHITE8x8",
@@ -48,16 +48,19 @@ local function AcquireBankCategoryHeader(parent, categoryID, titleText, count, c
         header:SetBackdropBorderColor(0.25, 0.30, 0.40, 0.70)
 
         local arrow = header:CreateFontString(nil, "OVERLAY")
-        arrow:SetPoint("LEFT", header, "LEFT", 4, 0)
+        arrow:SetPoint("LEFT", header, "LEFT", 3, 0)
         header.Arrow = arrow
 
-        local title = header:CreateFontString(nil, "OVERLAY")
-        title:SetPoint("LEFT", arrow, "RIGHT", 4, 0)
-        header.Title = title
-
         local countFs = header:CreateFontString(nil, "OVERLAY")
-        countFs:SetPoint("RIGHT", header, "RIGHT", -6, 0)
+        countFs:SetPoint("RIGHT", header, "RIGHT", -4, 0)
         header.Count = countFs
+
+        local title = header:CreateFontString(nil, "OVERLAY")
+        title:SetPoint("LEFT", arrow, "RIGHT", 3, 0)
+        title:SetPoint("RIGHT", countFs, "LEFT", -2, 0)
+        title:SetJustifyH("LEFT")
+        title:SetWordWrap(false)
+        header.Title = title
     end
 
     local db = BFB.db or {}
@@ -642,57 +645,155 @@ function BankFrame:UpdateLayout()
 
         totalContentH = rows * btnSize + (rows - 1) * spacing
     else
+        -- 2. Intelligent Categorized Sections Mode (Space-Consolidating Layout)
         local categories = BFB.CategoryEngine and BFB.CategoryEngine:GroupSlots(slotList) or {}
         local currentY = 0
+        local compactMode = (db.compactCategories ~= false)
+        local headerH = 18
+        local catGap = 4
 
-        for _, catGroup in ipairs(categories) do
-            local catID = catGroup.id
-            local isCollapsed = db.collapsedBankCategories[catID]
-            local numItemsInCat = #catGroup.slots
+        if not compactMode then
+            -- Traditional Stacked View (Full Width per category with tight padding)
+            for _, catGroup in ipairs(categories) do
+                local catID = catGroup.id
+                local isCollapsed = db.collapsedBankCategories[catID]
+                local numItemsInCat = #catGroup.slots
 
-            local header = AcquireBankCategoryHeader(
-                bankFrame.GridContainer,
-                catID,
-                catGroup.name,
-                numItemsInCat,
-                catGroup.color,
-                isCollapsed,
-                function(toggledCatID)
-                    db.collapsedBankCategories[toggledCatID] = not db.collapsedBankCategories[toggledCatID]
-                    BankFrame:UpdateLayout()
+                local header = AcquireBankCategoryHeader(
+                    bankFrame.GridContainer,
+                    catID,
+                    catGroup.name,
+                    numItemsInCat,
+                    catGroup.color,
+                    isCollapsed,
+                    function(toggledCatID)
+                        db.collapsedBankCategories[toggledCatID] = not db.collapsedBankCategories[toggledCatID]
+                        BankFrame:UpdateLayout()
+                    end
+                )
+
+                local gridW = cols * btnSize + (cols - 1) * spacing
+                header:SetWidth(gridW)
+                header:SetPoint("TOPLEFT", bankFrame.GridContainer, "TOPLEFT", 0, currentY)
+                currentY = currentY - headerH - spacing
+
+                if not isCollapsed then
+                    local catRows = math.ceil(numItemsInCat / cols)
+                    if catRows < 1 then catRows = 1 end
+
+                    for idx, slotData in ipairs(catGroup.slots) do
+                        local bagContainer = GetBankBagContainer(slotData.bag)
+                        local btn = BFB.ItemButtons:Acquire(bagContainer)
+                        btn:ClearAllPoints()
+                        btn:SetSize(btnSize, btnSize)
+
+                        local row = math.floor((idx - 1) / cols)
+                        local col = (idx - 1) % cols
+
+                        local x = col * (btnSize + spacing)
+                        local y = currentY - (row * (btnSize + spacing))
+
+                        btn:SetPoint("TOPLEFT", bankFrame.GridContainer, "TOPLEFT", x, y)
+                        BFB.ItemButtons:UpdateButton(btn, slotData.bag, slotData.slot, searchTerm)
+                        table.insert(activeBankButtons, btn)
+                    end
+
+                    local catBlockH = catRows * btnSize + (catRows - 1) * spacing
+                    currentY = currentY - catBlockH - catGap
+                else
+                    currentY = currentY - catGap
                 end
-            )
+            end
+        else
+            -- Consolidated Space-Saving Shelf Flow Mode (packs multiple small categories into single rows)
+            local shelfX = 0
+            local shelfRemainingCols = cols
+            local shelfMaxH = 0
+            local shelfCategories = {}
 
-            local gridW = cols * btnSize + (cols - 1) * spacing
-            header:SetWidth(gridW)
-            header:SetPoint("TOPLEFT", bankFrame.GridContainer, "TOPLEFT", 0, currentY)
-            currentY = currentY - 24
+            local function FlushBankShelf()
+                if #shelfCategories == 0 then return end
+                for _, item in ipairs(shelfCategories) do
+                    local header = item.header
+                    local catWidth = item.catCols * btnSize + (item.catCols - 1) * spacing
+                    header:SetWidth(catWidth)
+                    header:SetPoint("TOPLEFT", bankFrame.GridContainer, "TOPLEFT", item.startX, currentY)
 
-            if not isCollapsed then
-                local catRows = math.ceil(numItemsInCat / cols)
-                if catRows < 1 then catRows = 1 end
+                    if not item.isCollapsed then
+                        for idx, slotData in ipairs(item.slots) do
+                            local bagContainer = GetBankBagContainer(slotData.bag)
+                            local btn = BFB.ItemButtons:Acquire(bagContainer)
+                            btn:ClearAllPoints()
+                            btn:SetSize(btnSize, btnSize)
 
-                for idx, slotData in ipairs(catGroup.slots) do
-                    local bagContainer = GetBankBagContainer(slotData.bag)
-                    local btn = BFB.ItemButtons:Acquire(bagContainer)
-                    btn:ClearAllPoints()
-                    btn:SetSize(btnSize, btnSize)
+                            local row = math.floor((idx - 1) / item.catCols)
+                            local col = (idx - 1) % item.catCols
 
-                    local row = math.floor((idx - 1) / cols)
-                    local col = (idx - 1) % cols
+                            local bx = item.startX + col * (btnSize + spacing)
+                            local by = currentY - headerH - spacing - row * (btnSize + spacing)
 
-                    local x = col * (btnSize + spacing)
-                    local y = currentY - (row * (btnSize + spacing))
-
-                    btn:SetPoint("TOPLEFT", bankFrame.GridContainer, "TOPLEFT", x, y)
-                    BFB.ItemButtons:UpdateButton(btn, slotData.bag, slotData.slot, searchTerm)
-                    table.insert(activeBankButtons, btn)
+                            btn:SetPoint("TOPLEFT", bankFrame.GridContainer, "TOPLEFT", bx, by)
+                            BFB.ItemButtons:UpdateButton(btn, slotData.bag, slotData.slot, searchTerm)
+                            table.insert(activeBankButtons, btn)
+                        end
+                    end
                 end
 
-                local catBlockH = catRows * btnSize + (catRows - 1) * spacing
-                currentY = currentY - catBlockH - 10
-            else
-                currentY = currentY - 4
+                currentY = currentY - shelfMaxH - catGap
+                shelfX = 0
+                shelfRemainingCols = cols
+                shelfMaxH = 0
+                wipe(shelfCategories)
+            end
+
+            for _, catGroup in ipairs(categories) do
+                local catID = catGroup.id
+                local isCollapsed = db.collapsedBankCategories[catID]
+                local numItemsInCat = #catGroup.slots
+
+                local header = AcquireBankCategoryHeader(
+                    bankFrame.GridContainer,
+                    catID,
+                    catGroup.name,
+                    numItemsInCat,
+                    catGroup.color,
+                    isCollapsed,
+                    function(toggledCatID)
+                        db.collapsedBankCategories[toggledCatID] = not db.collapsedBankCategories[toggledCatID]
+                        BankFrame:UpdateLayout()
+                    end
+                )
+
+                local catCols
+                if isCollapsed then
+                    catCols = math.min(cols, 2)
+                else
+                    catCols = math.min(cols, math.max(numItemsInCat, 2))
+                end
+
+                local catRows = isCollapsed and 0 or math.ceil(numItemsInCat / catCols)
+                local thisH = headerH + ((catRows > 0) and (spacing + catRows * btnSize + (catRows - 1) * spacing) or 0)
+
+                if catCols > shelfRemainingCols and #shelfCategories > 0 then
+                    FlushBankShelf()
+                end
+
+                table.insert(shelfCategories, {
+                    header = header,
+                    catCols = catCols,
+                    startX = shelfX,
+                    slots = catGroup.slots,
+                    isCollapsed = isCollapsed,
+                    height = thisH,
+                })
+
+                shelfX = shelfX + catCols * (btnSize + spacing)
+                shelfRemainingCols = shelfRemainingCols - catCols
+                shelfMaxH = math.max(shelfMaxH, thisH)
+            end
+
+            if #shelfCategories > 0 then
+                FlushBankShelf()
             end
         end
 

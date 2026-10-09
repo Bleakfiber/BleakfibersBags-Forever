@@ -287,11 +287,22 @@ local function CreateContextMenu()
         y = y - 22
     end
 
-    -- Close on click outside or escape
-    menu:SetScript("OnLeave", function(self)
-        if not MouseIsOver(self) then
-            self:Hide()
-        end
+    -- Fullscreen click-catcher behind menu to dismiss on click outside
+    local clickCatcher = CreateFrame("Button", "BFB_ContextMenuClickCatcher", UIParent)
+    clickCatcher:SetFrameStrata("DIALOG")
+    clickCatcher:SetAllPoints(UIParent)
+    clickCatcher:EnableMouse(true)
+    clickCatcher:Hide()
+    clickCatcher:SetScript("OnClick", function()
+        menu:Hide()
+    end)
+
+    menu:HookScript("OnShow", function(self)
+        clickCatcher:SetFrameLevel(math.max(1, self:GetFrameLevel() - 1))
+        clickCatcher:Show()
+    end)
+    menu:HookScript("OnHide", function()
+        clickCatcher:Hide()
     end)
 
     contextMenuFrame = menu

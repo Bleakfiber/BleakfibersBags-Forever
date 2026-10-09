@@ -1,5 +1,16 @@
 # Changelog - Bleakfiber's Bags (Forever)
 
+## [1.5.3] - 2026-10-09
+
+### Added
+- **Built-in Item Classification Database (`CategoryEngine.lua`)**: Pre-populated classification database for staples including cloths, basic drinks, foods, bandages, potions, herbs, ores, metal bars, leathers, tools, and utility items (such as Hearthstone) ensuring immediate, accurate category placement on login and cold cache.
+- **Robust Multi-Tier Classification Engine (`CategoryEngine.lua`)**: Integrated synchronous `GetItemInfoInstant` numeric classID extraction with localized string parsing and strict `INVTYPE_*` validation, evaluating consumables and trade goods before equipment so items never misclassify into gear.
+- **Space-Consolidating Category Layout & Shelf Packing (`BagFrame.lua`, `BankFrame.lua`)**: Replaced tall single-category vertical stacks with intelligent row shelf flow packing, allowing small categories to share horizontal space side-by-side while preserving compact 18px headers and 4px padding.
+- **Free Slot Suppression Toggle in Category View (`CategoryEngine.lua`, `Config.lua`, `UI.lua`)**: Added `showCategoryFreeSlots` option (defaulting to hidden in category view) so empty slots no longer generate dozens of blank buttons, allowing bags to stay ultra-compact while free space is displayed cleanly in the footer summary.
+
+### Fixed
+- **Context Menu Outside-Click Nil Error (`ItemButton.lua`)**: Implemented fullscreen modal background click-catcher for category assignment menus, removing `MouseIsOver` calls and resolving nil value errors when moving the cursor outside the menu.
+
 ## [1.5.2] - 2026-10-09
 
 ### Fixed

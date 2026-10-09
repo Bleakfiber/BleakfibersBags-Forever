@@ -1,7 +1,7 @@
 local addonName, BFB = ...
 
 BFB.addonName = addonName
-BFB.version = "1.5.2"
+BFB.version = "1.5.3"
 
 -- Safe API wrapper for item info
 function BFB:GetItemData(item)
@@ -21,6 +21,8 @@ local DB_DEFAULTS = {
         buttonSize = 37,
         buttonSpacing = 4,
         viewMode = "grid", -- "grid" or "category"
+        compactCategories = true,
+        showCategoryFreeSlots = false,
         collapsedCategories = {},
         
         -- Bank Settings

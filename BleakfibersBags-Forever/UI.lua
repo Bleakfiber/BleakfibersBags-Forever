@@ -1090,6 +1090,26 @@ function UI:BuildOptions(parentContainer, isMasterHub)
         "Number of minutes newly looted items stay categorized in the Recent Items section."
     )
 
+    local cbCompactCats = self:CreateCheckbox(pDisplay, "BFB_CbCompactCats", "Consolidate Category Space", 16, 0,
+        function() return db.compactCategories ~= false end,
+        function(v)
+            db.compactCategories = v
+            if BFB.BagFrame and BFB.BagFrame.UpdateLayout then BFB.BagFrame:UpdateLayout() end
+            if BFB.BankFrame and BFB.BankFrame.UpdateLayout then BFB.BankFrame:UpdateLayout() end
+        end,
+        "Packs small categories side-by-side into rows instead of full-width vertical stacks, drastically shrinking window height."
+    )
+
+    local cbCategoryFreeSlots = self:CreateCheckbox(pDisplay, "BFB_CbCategoryFreeSlots", "Show Free Slots in Category View", 16, 0,
+        function() return db.showCategoryFreeSlots == true end,
+        function(v)
+            db.showCategoryFreeSlots = v
+            if BFB.BagFrame and BFB.BagFrame.UpdateLayout then BFB.BagFrame:UpdateLayout() end
+            if BFB.BankFrame and BFB.BankFrame.UpdateLayout then BFB.BankFrame:UpdateLayout() end
+        end,
+        "When disabled, empty slot grids are omitted in category mode to save space (free slot count remains in the footer)."
+    )
+
     local btnClearRecent = self:CreateButton(pDisplay, "BFB_BtnClearRecent", "Clear Recent Cache", 16, 0, 150, 22, function()
         if BFB.CategoryEngine and BFB.CategoryEngine.ClearRecent then
             BFB.CategoryEngine:ClearRecent()
@@ -1196,6 +1216,14 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             if cbRecentItems.text then cbRecentItems.text:SetWidth(colWidth - 32) end
             y = y - 48
 
+            cbCompactCats:ClearAllPoints()
+            cbCompactCats:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
+            cbCategoryFreeSlots:ClearAllPoints()
+            cbCategoryFreeSlots:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col2X, y)
+            if cbCompactCats.text then cbCompactCats.text:SetWidth(colWidth - 32) end
+            if cbCategoryFreeSlots.text then cbCategoryFreeSlots.text:SetWidth(colWidth - 32) end
+            y = y - 32
+
             btnClearRecent:ClearAllPoints()
             btnClearRecent:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
             btnClearOverrides:ClearAllPoints()
@@ -1210,6 +1238,16 @@ function UI:BuildOptions(parentContainer, isMasterHub)
             slRecentTimeout:ClearAllPoints()
             slRecentTimeout:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
             y = y - 48
+
+            cbCompactCats:ClearAllPoints()
+            cbCompactCats:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
+            if cbCompactCats.text then cbCompactCats.text:SetWidth(colWidth - 32) end
+            y = y - 32
+
+            cbCategoryFreeSlots:ClearAllPoints()
+            cbCategoryFreeSlots:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
+            if cbCategoryFreeSlots.text then cbCategoryFreeSlots.text:SetWidth(colWidth - 32) end
+            y = y - 32
 
             btnClearRecent:ClearAllPoints()
             btnClearRecent:SetPoint("TOPLEFT", pDisplay, "TOPLEFT", col1X, y)
