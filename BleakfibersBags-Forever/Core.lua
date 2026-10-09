@@ -37,31 +37,41 @@ function BFB:OnInitialize()
     end
 end
 
+-- Safe Event Registration Wrapper (Validates against client engine)
+local function SafeRegisterEvent(addon, event, handler)
+    if C_EventUtils and C_EventUtils.IsEventValid then
+        if not C_EventUtils.IsEventValid(event) then
+            return false
+        end
+    end
+    local ok = pcall(function()
+        addon:RegisterEvent(event, handler)
+    end)
+    return ok
+end
+
 function BFB:OnEnable()
     -- Register Inventory & Currency Events
-    self:RegisterEvent("BAG_UPDATE", "OnBagUpdate")
-    if C_EventUtils and C_EventUtils.IsEventValid and C_EventUtils.IsEventValid("BAG_UPDATE_DELAYED") then
-        self:RegisterEvent("BAG_UPDATE_DELAYED", "OnBagUpdate")
-    end
-    self:RegisterEvent("ITEM_LOCK_CHANGED", "OnItemLockChanged")
-    self:RegisterEvent("PLAYER_MONEY", "OnPlayerMoney")
+    SafeRegisterEvent(self, "BAG_UPDATE", "OnBagUpdate")
+    SafeRegisterEvent(self, "BAG_UPDATE_DELAYED", "OnBagUpdate")
+    SafeRegisterEvent(self, "ITEM_LOCK_CHANGED", "OnItemLockChanged")
+    SafeRegisterEvent(self, "PLAYER_MONEY", "OnPlayerMoney")
 
-    -- Register Bank Events
-    self:RegisterEvent("BANKFRAME_OPENED", "OnBankOpened")
-    self:RegisterEvent("BANKFRAME_CLOSED", "OnBankClosed")
-    self:RegisterEvent("PLAYERBANKSLOTS_CHANGED", "OnBankSlotsChanged")
-    self:RegisterEvent("PLAYERBANKBAGSLOTS_CHANGED", "OnBankBagSlotsChanged")
+    -- Register Bank Events (PLAYERBANKSLOTS_CHANGED handles both generic slots and bank bags)
+    SafeRegisterEvent(self, "BANKFRAME_OPENED", "OnBankOpened")
+    SafeRegisterEvent(self, "BANKFRAME_CLOSED", "OnBankClosed")
+    SafeRegisterEvent(self, "PLAYERBANKSLOTS_CHANGED", "OnBankSlotsChanged")
 
     -- Register Interaction & Merchant Automation Events
-    self:RegisterEvent("MERCHANT_SHOW", "OnMerchantShow")
-    self:RegisterEvent("MERCHANT_CLOSED", "OnMerchantClosed")
-    self:RegisterEvent("MAIL_SHOW", "OnMailShow")
-    self:RegisterEvent("MAIL_CLOSED", "OnMailClosed")
-    self:RegisterEvent("AUCTION_HOUSE_SHOW", "OnAuctionShow")
-    self:RegisterEvent("AUCTION_HOUSE_CLOSED", "OnAuctionClosed")
-    self:RegisterEvent("TRADE_SHOW", "OnTradeShow")
-    self:RegisterEvent("TRADE_CLOSED", "OnTradeClosed")
-    self:RegisterEvent("CHAT_MSG_LOOT", "OnChatMsgLoot")
+    SafeRegisterEvent(self, "MERCHANT_SHOW", "OnMerchantShow")
+    SafeRegisterEvent(self, "MERCHANT_CLOSED", "OnMerchantClosed")
+    SafeRegisterEvent(self, "MAIL_SHOW", "OnMailShow")
+    SafeRegisterEvent(self, "MAIL_CLOSED", "OnMailClosed")
+    SafeRegisterEvent(self, "AUCTION_HOUSE_SHOW", "OnAuctionShow")
+    SafeRegisterEvent(self, "AUCTION_HOUSE_CLOSED", "OnAuctionClosed")
+    SafeRegisterEvent(self, "TRADE_SHOW", "OnTradeShow")
+    SafeRegisterEvent(self, "TRADE_CLOSED", "OnTradeClosed")
+    SafeRegisterEvent(self, "CHAT_MSG_LOOT", "OnChatMsgLoot")
 
     -- Hook Default Blizzard Bag Functions
     self:HookBlizzardBagFrames()
@@ -178,6 +188,9 @@ end
 
 function BFB:OnBankSlotsChanged()
     if self.BankFrame and self.BankFrame.IsShown and self.BankFrame:IsShown() then
+        if self.BankFrame.UpdateBankBagSlotBar then
+            self.BankFrame:UpdateBankBagSlotBar()
+        end
         self.BankFrame:UpdateLayout()
     end
     if self.BankCache then
@@ -186,13 +199,7 @@ function BFB:OnBankSlotsChanged()
 end
 
 function BFB:OnBankBagSlotsChanged()
-    if self.BankFrame and self.BankFrame.IsShown and self.BankFrame:IsShown() then
-        self.BankFrame:UpdateBankBagSlotBar()
-        self.BankFrame:UpdateLayout()
-    end
-    if self.BankCache then
-        self.BankCache:ScanBank()
-    end
+    self:OnBankSlotsChanged()
 end
 
 function BFB:OnMailShow()

@@ -80,3 +80,4 @@ Runs 100% standalone out of the box with zero required external dependencies or 
 ## License
 
 Bleakfiber's Bags is released under the **Source-Available Restricted License**. All rights reserved. Free for personal gameplay use and private code inspection. Unauthorized commercial distribution or derivative modifications are prohibited.
+
