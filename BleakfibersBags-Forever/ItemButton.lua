@@ -768,7 +768,7 @@ function ItemButtons:UpdateButton(button, bagID, slotID, searchTerm)
 
     -- Quality Glow Border
     if db.showQualityGlow ~= false and quality and quality > 1 and button.QualityBorder then
-        local r, g, b = GetItemQualityColor(quality)
+        local r, g, b = BFB:GetItemQualityColor(quality)
         button.QualityBorder:SetColorTexture(r, g, b, 0.95)
         button.QualityBorder:Show()
     else

@@ -15,6 +15,23 @@ local function GetItemInfo(item)
     return nil
 end
 
+function BFB:GetItemQualityColor(quality)
+    if not quality then return 1, 1, 1, "|cffffffff" end
+    if C_Item and C_Item.GetItemQualityColor then
+        local r, g, b, hex = C_Item.GetItemQualityColor(quality)
+        if r then return r, g, b, hex or "|cffffffff" end
+    end
+    if _G.GetItemQualityColor then
+        local r, g, b, hex = _G.GetItemQualityColor(quality)
+        if r then return r, g, b, hex or "|cffffffff" end
+    end
+    if ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality] then
+        local qc = ITEM_QUALITY_COLORS[quality]
+        return qc.r or 1, qc.g or 1, qc.b or 1, qc.hex or "|cffffffff"
+    end
+    return 1, 1, 1, "|cffffffff"
+end
+
 local updatePending = false
 local function TriggerBagUpdate()
     if updatePending then return end

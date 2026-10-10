@@ -597,7 +597,7 @@ function BagFrame:UpdateBagSlotBar()
                 btn.Count:SetText(numSlots and tostring(numSlots) or "")
                 local _, _, quality = GetItemInfo(itemLink)
                 if quality and quality > 1 then
-                    local r, g, b = GetItemQualityColor(quality)
+                    local r, g, b = BFB:GetItemQualityColor(quality)
                     btn:SetBackdropBorderColor(r, g, b, 1.0)
                 else
                     btn:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.8)
