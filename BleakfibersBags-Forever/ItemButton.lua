@@ -127,6 +127,75 @@ BFB.GetItemCooldown = GetItemCooldown
 BFB.GetItemInfoCompat = GetItemInfoCompat
 BFB.GetBagName = GetBagNameCompat
 
+-- Create a crisp 4-line border object (Top, Bottom, Left, Right) to avoid filling the icon surface
+local function CreateBorderLines(parent, drawLayer, subLevel, thickness)
+    thickness = thickness or 1.5
+    local top = parent:CreateTexture(nil, drawLayer, nil, subLevel)
+    top:SetTexture("Interface\\Buttons\\WHITE8x8")
+    top:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+    top:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
+    top:SetHeight(thickness)
+
+    local bottom = parent:CreateTexture(nil, drawLayer, nil, subLevel)
+    bottom:SetTexture("Interface\\Buttons\\WHITE8x8")
+    bottom:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
+    bottom:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+    bottom:SetHeight(thickness)
+
+    local left = parent:CreateTexture(nil, drawLayer, nil, subLevel)
+    left:SetTexture("Interface\\Buttons\\WHITE8x8")
+    left:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -thickness)
+    left:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, thickness)
+    left:SetWidth(thickness)
+
+    local right = parent:CreateTexture(nil, drawLayer, nil, subLevel)
+    right:SetTexture("Interface\\Buttons\\WHITE8x8")
+    right:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -thickness)
+    right:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, thickness)
+    right:SetWidth(thickness)
+
+    local border = {
+        top = top,
+        bottom = bottom,
+        left = left,
+        right = right,
+        SetColorTexture = function(self, r, g, b, a)
+            a = a or 1
+            self.top:SetColorTexture(r, g, b, a)
+            self.bottom:SetColorTexture(r, g, b, a)
+            self.left:SetColorTexture(r, g, b, a)
+            self.right:SetColorTexture(r, g, b, a)
+        end,
+        SetVertexColor = function(self, r, g, b, a)
+            a = a or 1
+            self.top:SetVertexColor(r, g, b, a)
+            self.bottom:SetVertexColor(r, g, b, a)
+            self.left:SetVertexColor(r, g, b, a)
+            self.right:SetVertexColor(r, g, b, a)
+        end,
+        Show = function(self)
+            self.top:Show()
+            self.bottom:Show()
+            self.left:Show()
+            self.right:Show()
+        end,
+        Hide = function(self)
+            self.top:Hide()
+            self.bottom:Hide()
+            self.left:Hide()
+            self.right:Hide()
+        end,
+        SetShown = function(self, shown)
+            if shown then self:Show() else self:Hide() end
+        end,
+        IsShown = function(self)
+            return self.top:IsShown()
+        end,
+    }
+    border:Hide()
+    return border
+end
+
 -- Check if an item is equippable and cannot be used by the character
 function BFB:IsItemUnusable(bagID, slotID, itemLink)
     if not itemLink then return false end
@@ -473,22 +542,10 @@ function ItemButtons:Acquire(parent)
         button.SlotInner = slotInner
 
         -- Quality Border Overlay (Signature Crisp Border)
-        local qualityBorder = button:CreateTexture(nil, "OVERLAY", nil, 1)
-        qualityBorder:SetTexture("Interface\\Buttons\\WHITE8x8")
-        qualityBorder:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 0)
-        qualityBorder:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
-        qualityBorder:SetBlendMode("BLEND")
-        qualityBorder:Hide()
-        button.QualityBorder = qualityBorder
+        button.QualityBorder = CreateBorderLines(button, "OVERLAY", 1, 1.5)
 
         -- Specialty Container Slot Border (Soul, Herb, Mining, Enchanting, Ammo)
-        local specialtyBorder = button:CreateTexture(nil, "OVERLAY", nil, 1)
-        specialtyBorder:SetTexture("Interface\\Buttons\\WHITE8x8")
-        specialtyBorder:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 0)
-        specialtyBorder:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
-        specialtyBorder:SetBlendMode("BLEND")
-        specialtyBorder:Hide()
-        button.SpecialtyBorder = specialtyBorder
+        button.SpecialtyBorder = CreateBorderLines(button, "OVERLAY", 1, 1.5)
 
         -- Unusable Equipment Red Tint Overlay
         local unusableOverlay = button:CreateTexture(nil, "OVERLAY", nil, 2)
@@ -721,7 +778,7 @@ function ItemButtons:UpdateButton(button, bagID, slotID, searchTerm)
         -- Specialty Container Slot Tint (Soul, Herb, Mining, Enchanting, Ammo)
         local specialty = (db.highlightSpecialtyBags ~= false) and BFB:GetBagSpecialty(bagID)
         if specialty and button.SpecialtyBorder then
-            button.SpecialtyBorder:SetColorTexture(specialty.r, specialty.g, specialty.b, 0.50)
+            button.SpecialtyBorder:SetColorTexture(specialty.r, specialty.g, specialty.b, 0.85)
             button.SpecialtyBorder:Show()
         else
             if button.SpecialtyBorder then button.SpecialtyBorder:Hide() end

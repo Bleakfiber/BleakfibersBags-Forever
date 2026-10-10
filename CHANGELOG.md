@@ -1,5 +1,10 @@
 # Changelog - Bleakfiber's Bags (Forever)
 
+## [1.5.6] - 2026-10-10
+
+### Added
+- Fix item quality glow overlay covering icons by replacing filled quads with crisp 1.5px border lines
+
 ## [1.5.5] - 2026-10-10
 
 ### Added
