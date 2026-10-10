@@ -94,11 +94,38 @@ local function GetItemInfoCompat(item)
     return nil
 end
 
+local function GetBagNameCompat(bagID)
+    if not bagID or bagID == 0 or bagID == -1 then return nil end
+    if C_Container and C_Container.GetBagName then
+        local name = C_Container.GetBagName(bagID)
+        if name then return name end
+    end
+    if _G.GetBagName then
+        local name = _G.GetBagName(bagID)
+        if name then return name end
+    end
+    local invID
+    if C_Container and C_Container.ContainerIDToInventoryID then
+        invID = C_Container.ContainerIDToInventoryID(bagID)
+    elseif _G.ContainerIDToInventoryID then
+        invID = _G.ContainerIDToInventoryID(bagID)
+    end
+    if invID then
+        local link = GetInventoryItemLink and GetInventoryItemLink("player", invID)
+        if link then
+            local name = GetItemInfoCompat(link)
+            if name then return name end
+        end
+    end
+    return nil
+end
+
 BFB.GetNumSlots = GetNumSlots
 BFB.GetItemInfo = GetContainerItemInfoCompat
 BFB.GetContainerItemInfo = GetContainerItemInfoCompat
 BFB.GetItemCooldown = GetItemCooldown
 BFB.GetItemInfoCompat = GetItemInfoCompat
+BFB.GetBagName = GetBagNameCompat
 
 -- Check if an item is equippable and cannot be used by the character
 function BFB:IsItemUnusable(bagID, slotID, itemLink)
@@ -147,7 +174,30 @@ local SPECIALTY_BAG_FAMILIES = {
 
 function BFB:GetBagSpecialty(bagID)
     if not bagID or bagID == 0 or bagID == -1 then return nil end
-    local bagName = GetBagName(bagID)
+
+    -- Check bag family bitmask first if available
+    local freeSlots, bagFamily
+    if C_Container and C_Container.GetContainerNumFreeSlots then
+        freeSlots, bagFamily = C_Container.GetContainerNumFreeSlots(bagID)
+    elseif _G.GetContainerNumFreeSlots then
+        freeSlots, bagFamily = _G.GetContainerNumFreeSlots(bagID)
+    end
+
+    if bagFamily and bagFamily > 0 and bit and bit.band then
+        if bit.band(bagFamily, 4) ~= 0 then
+            return SPECIALTY_BAG_FAMILIES.soul
+        elseif bit.band(bagFamily, 32) ~= 0 then
+            return SPECIALTY_BAG_FAMILIES.herb
+        elseif bit.band(bagFamily, 512) ~= 0 then
+            return SPECIALTY_BAG_FAMILIES.mining
+        elseif bit.band(bagFamily, 64) ~= 0 then
+            return SPECIALTY_BAG_FAMILIES.enchant
+        elseif bit.band(bagFamily, 3) ~= 0 then -- 1 (arrow) + 2 (bullet)
+            return SPECIALTY_BAG_FAMILIES.ammo
+        end
+    end
+
+    local bagName = GetBagNameCompat(bagID)
     if not bagName then return nil end
     bagName = bagName:lower()
 

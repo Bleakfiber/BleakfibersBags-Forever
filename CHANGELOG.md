@@ -1,5 +1,10 @@
 # Changelog - Bleakfiber's Bags (Forever)
 
+## [1.5.5] - 2026-10-10
+
+### Added
+- Add GetBagNameCompat and support C_Container.GetBagName and bag family bitmasks in ItemButton
+
 ## [1.5.4] - 2026-10-09
 
 ### Added
